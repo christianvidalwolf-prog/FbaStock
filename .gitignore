@@ -1,0 +1,38 @@
+# DCASA CSV files (downloaded automatically)
+DataWeb*.csv
+
+# Excel files
+*.xlsx
+*.xls
+
+# Large JSON data files (generated automatically)
+base_stocks.json
+catalog_robust.json
+catalog_map.json
+catalog_v3.json
+catalog*.json
+baseline*.json
+excel_prices_final.json
+md_stock_source.json
+
+# Feed/stock files
+minerales_feed.xml
+signes_stock.csv
+*.txt
+!PASTE_AMAZON_VALUES.command
+
+# Temp/debug files
+debug_files.py
+extract_v*.py
+extract_final.py
+extract_full.py
+extract_robust.py
+~$*
+*.log
+
+# Output
+STOCK\ AMZ*.txt
+StockDcasa*.csv
+StockDcasa*.xlsx
+MINERALES*.xlsx
+SIGNES*.xlsx
