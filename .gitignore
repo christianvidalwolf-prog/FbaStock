@@ -36,3 +36,7 @@ StockDcasa*.csv
 StockDcasa*.xlsx
 MINERALES*.xlsx
 SIGNES*.xlsx
+fba-replenishment/node_modules
+fba-replenishment/dist
+.env*
+.DS_Store

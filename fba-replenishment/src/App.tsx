@@ -69,14 +69,26 @@ function App() {
   
   // Excluded SKUs (No restock)
   const [excludedSkus, setExcludedSkus] = useState<Set<string>>(new Set());
+  
+  // Discarded recommendations
+  const [discardedRecommendations, setDiscardedRecommendations] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const saved = localStorage.getItem('excluded_skus');
-    if (saved) {
+    const savedExcluded = localStorage.getItem('excluded_skus');
+    if (savedExcluded) {
       try {
-        setExcludedSkus(new Set(JSON.parse(saved)));
+        setExcludedSkus(new Set(JSON.parse(savedExcluded)));
       } catch (e) {
         console.error("Error loading excluded skus", e);
+      }
+    }
+
+    const savedDiscarded = localStorage.getItem('discarded_recommendations');
+    if (savedDiscarded) {
+      try {
+        setDiscardedRecommendations(new Set(JSON.parse(savedDiscarded)));
+      } catch (e) {
+        console.error("Error loading discarded recommendations", e);
       }
     }
   }, []);
@@ -87,6 +99,16 @@ function App() {
       if (next.has(sku)) next.delete(sku);
       else next.add(sku);
       localStorage.setItem('excluded_skus', JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
+
+  const toggleDiscardRecommendation = (sku: string) => {
+    setDiscardedRecommendations(prev => {
+      const next = new Set(prev);
+      if (next.has(sku)) next.delete(sku);
+      else next.add(sku);
+      localStorage.setItem('discarded_recommendations', JSON.stringify(Array.from(next)));
       return next;
     });
   };
@@ -688,7 +710,9 @@ function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/30">
-                    {data.fbm_recommendations?.filter(rec => !excludedSkus.has(rec.sku)).map((rec, i) => (
+                    {data.fbm_recommendations
+                      ?.filter(rec => !discardedRecommendations.has(rec.sku))
+                      ?.map((rec, i) => (
                       <motion.tr
                         key={rec.sku}
                         initial={{ opacity: 0, y: 10 }}
@@ -697,15 +721,13 @@ function App() {
                         className="hover:bg-indigo-50/30 transition-colors"
                       >
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
                             <button
-                              onClick={() => toggleExclude(rec.sku)}
-                              className="text-slate-400 hover:text-red-500 transition-colors p-1"
-                              title="Excluir"
+                              onClick={() => toggleDiscardRecommendation(rec.sku)}
+                              className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                              title="Desestimar recomendación"
                             >
-                              <span className="material-symbols-outlined text-[20px]">
-                                close
-                              </span>
+                              <span className="material-symbols-outlined text-[20px]">block</span>
                             </button>
                             <div className="flex flex-col">
                               <div className="flex items-center gap-2 mb-1">

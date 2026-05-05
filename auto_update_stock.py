@@ -12,19 +12,50 @@ from ftplib import FTP
 WORK_DIR = '/Users/christianvidalwolf/Stock'
 MASTER_FILE = f'{WORK_DIR}/INICIO PLUS 2023.xlsx'
 SKUS_FORZAR_CERO = ['2450'] # ID for ASIN B010TN6SXU
+PRECIOS_FIJOS = {
+    "1016VCI": 10.99,
+    "14165VCI": 8.99,
+    "40552MD": 22.99,
+    "42772MD": 26.99,
+    "4359VCI": 10.99,
+    "31469MD": 13.99,
+    "2388VCI": 15.99,
+    "2185651CLM": 9.99,
+    "23779SG": 15.99,
+    "17385VCI": 8.99,
+    "31181MD": 21.99,
+    "1304VC": 10.99,
+    "15846VCI": 12.99,
+    "11302VC": 16.99,
+}
 
 SIGNES_SKUS_FORZAR_CERO = {
-    '010VC',
-    '3019VC',
-    '3020VC',
-    '3027VC',
-    '3030VC',
-    '3035VC',
-    '3298VC0',
-    '4462VC',
-    '4695VC',
-    '4697VC',
-    '2088VC0',
+    '11631VC', '1237VC', '1238VC', '1652VC', '1653VC', '1684VC', '1688VC', '1717VC',
+    '1718VC', '180VC', '1832VC', '2025VC', '2027VC', '2180VC', '2181VC', '2210VC',
+    '2260VC', '2355VC', '2356VC', '2360VC', '2400VC', '2401VC', '2402VC', '2405VC',
+    '2406VC', '2414VC', '2415VC', '2425VC', '2447VC', '2510VC', '2517VC', '2522VC',
+    '2611VC', '2648VC', '2660VC', '2665VC', '2857VC', '2858VC', '2990VC', '3011VC',
+    '3012VC', '3013VC', '3015VC', '3018VC', '3019VC', '3020VC', '3021VC', '3027VC',
+    '3030VC', '3035VC', '3038VC', '3041VC', '3043VC', '3044VC', '3045VC', '3046VC',
+    '3048VC', '3052VC', '3053VC', '3054VC', '3055VC', '3062VC', '3063VC', '3064VC',
+    '3069VC', '3070VC', '3071VC', '3072VC', '3074VC', '3089VC', '3116VC', '3117VC',
+    '3118VC', '3119VC', '3120VC', '3121VC', '3123VC', '3125VC', '3126VC', '3127VC',
+    '3130VC', '3133VC', '3134VC', '3135VC', '3200VC', '3201VC', '3230VC', '3311VC',
+    '3314VC', '3315VC', '3354VC', '3372VC', '3380VC', '3391VC', '3392VC', '3423VC',
+    '3432VC', '3437VC', '3484VC', '3487VC', '3555VC', '3557VC', '3558VC', '3559VC',
+    '3712VC', '3824VC', '4107VC', '4108VC', '4110VC', '4115VC', '4125VC', '4130VC',
+    '4134VC', '4140VC', '4155VC', '4158VC', '4165VC', '4231VC', '4232VC', '4255VC',
+    '4259VC', '4261VC', '4263VC', '4264VC', '4265VC', '4285VC', '4288VC', '4330VC',
+    '4361VC', '4442VC', '4445VC', '4462VC', '4528VC', '4531VC', '4534VC', '4558VC',
+    '4657VC', '4721VC', '4722VC', '4727VC', '4735VC', '4737VC', '4745VC', '4752VC',
+    '4758VC', '4765VC', '4785VC', '4790VC', '4801VC', '4815VC', '4874VC', '4882VC',
+    "2915244CLM", "30512912CLM", "2861262CLM", "41683MDRG", "41891MDRG",
+    '5032VC', '5113VC', '5382VC', '5383VC', '5440VC', '5442VC', '5456VC', '5540VC',
+    '5571VC', '5572VC', '5574VC', '5575VC', '5588VC', '5592VC', '5685VC', '5712VC',
+    '5721VC', '5807VC', '5823VC', '5825VC', '5835VC', '5852VC', '5871VC', '5872VC',
+    '5873VC', '5874VC', '5882VC', '5883VC', '5885VC', '5987VC', '5991VC', '5995VC',
+    '6001VC', '6007VC', '6040VC', '6151VC', '6252VC', '6255VC', '6270VC', '6471VC',
+    '5658VCI',
 }
 
 ASINS_FORZAR_CERO = {
@@ -231,7 +262,11 @@ def process_minerales(input_file):
         if l_id_val in SKUS_FORZAR_CERO:
             stock_val = 0
 
-        row_vals = [to_num(row[0]), stock_val, stock_val, to_num(row[12])]
+        price_val = to_num(row[12])
+        if str(row[0]) in PRECIOS_FIJOS:
+            price_val = PRECIOS_FIJOS[str(row[0])]
+
+        row_vals = [to_num(row[0]), stock_val, stock_val, price_val]
         for c_idx, val in enumerate(row_vals, start=1):
             cell = ws_min.cell(row=r_idx, column=c_idx)
             if not isinstance(cell, MergedCell):
@@ -340,8 +375,18 @@ def export_amazon():
                 if any(x is not None for x in row):
                     # Force stock=0 for ASINs in ASINS_FORZAR_CERO (col 0 = ASIN, col 4 = stock)
                     asin = str(row[0]).strip() if row[0] is not None else ''
+                    if asin in ["2915244CLM", "30512912CLM", "2861262CLM", "41683MDRG", "41891MDRG"]:
+                        continue
                     row = list(row)
                     force_zero = asin in ASINS_FORZAR_CERO or asin.upper() in {s.upper() for s in SIGNES_SKUS_FORZAR_CERO}
+                    
+                    # Override price if in PRECIOS_FIJOS
+                    if asin in PRECIOS_FIJOS:
+                        row[1] = PRECIOS_FIJOS[asin]
+                        # Update min/max prices accordingly
+                        row[2] = round(row[1] / 2, 2)
+                        row[3] = round(row[1] * 2, 2)
+
                     if '2088' in asin:
                         print(f"[DEBUG EXPORT] asin={repr(asin)}, stock_before={row[4]}, force_zero={force_zero}")
                     if force_zero:

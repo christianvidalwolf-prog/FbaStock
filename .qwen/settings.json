@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/christianvidalwolf/.local/share/qwen-code/extensions/qwen-code-bundled/**)",
+      "Read(//Users/christianvidalwolf/.antigravity/extensions/qwenlm.qwen-code-vscode-ide-companion-0.14.2-darwin-arm64/dist/qwen-cli/bundled/qc-helper/docs/**)"
+    ]
+  },
+  "$version": 3
+}
