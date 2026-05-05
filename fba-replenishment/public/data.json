@@ -5,9 +5,9 @@
     "warning_count": 20,
     "out_of_supplier_stock": 1058,
     "back_in_stock_count": 21,
-    "slow_moving_count": 65,
+    "slow_moving_count": 148,
     "fbm_rec_count": 40,
-    "last_update": "2026-05-05 12:52:22"
+    "last_update": "2026-05-05 16:17:14"
   },
   "products": [
     {
@@ -323,7 +323,7 @@
       "velocity": 42.0,
       "days_left": 34.0,
       "final_rec": 0,
-      "supp_stock": 734,
+      "supp_stock": 730,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -1281,7 +1281,7 @@
       "sales_365": 40.0,
       "sales_60": 17.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B07THB5K14",
@@ -1300,7 +1300,7 @@
       "sales_365": 59.0,
       "sales_60": 5.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0CWRWX98X",
@@ -1414,7 +1414,7 @@
       "sales_365": 63.0,
       "sales_60": 18.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0F1TG9GCH",
@@ -1566,7 +1566,7 @@
       "sales_365": 29.0,
       "sales_60": 12.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0F1TYLNMD",
@@ -1585,7 +1585,7 @@
       "sales_365": 35.0,
       "sales_60": 11.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B00Y3H7GWG",
@@ -1832,7 +1832,7 @@
       "sales_365": 20.0,
       "sales_60": 7.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BXLDV67V",
@@ -1889,7 +1889,7 @@
       "sales_365": 7.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0FZCSWMD9",
@@ -1984,7 +1984,7 @@
       "sales_365": 33.0,
       "sales_60": 7.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B010TMBDSG",
@@ -1995,7 +1995,7 @@
       "velocity": 3.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 126,
+      "supp_stock": 120,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -2022,7 +2022,7 @@
       "sales_365": 36.0,
       "sales_60": 6.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B075VYVVRV",
@@ -2041,7 +2041,7 @@
       "sales_365": 118.0,
       "sales_60": 13.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B07TGFN38Z",
@@ -2060,7 +2060,7 @@
       "sales_365": 39.0,
       "sales_60": 6.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0859MYBB8",
@@ -2117,7 +2117,7 @@
       "sales_365": 17.0,
       "sales_60": 8.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF3JTRJ",
@@ -2193,7 +2193,7 @@
       "sales_365": 153.0,
       "sales_60": 17.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0CPJTDP5X",
@@ -2212,7 +2212,7 @@
       "sales_365": 165.0,
       "sales_60": 17.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B00KAIWWPI",
@@ -2231,7 +2231,7 @@
       "sales_365": 37.0,
       "sales_60": 7.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B07M9FXF3Z",
@@ -2307,7 +2307,7 @@
       "sales_365": 20.0,
       "sales_60": 6.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B08WR9QVR3",
@@ -2326,7 +2326,7 @@
       "sales_365": 53.0,
       "sales_60": 9.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B09X8GHYQF",
@@ -2364,7 +2364,7 @@
       "sales_365": 23.0,
       "sales_60": 6.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF5BZ6G",
@@ -2383,7 +2383,7 @@
       "sales_365": 58.0,
       "sales_60": 9.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BX4NBX9L",
@@ -2421,7 +2421,7 @@
       "sales_365": 50.0,
       "sales_60": 8.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0DLBVZN19",
@@ -2440,7 +2440,7 @@
       "sales_365": 32.0,
       "sales_60": 9.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0FZCYXCWH",
@@ -2459,7 +2459,7 @@
       "sales_365": 19.0,
       "sales_60": 6.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B005JTL8LC",
@@ -2478,7 +2478,7 @@
       "sales_365": 18.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B00K59X2CY",
@@ -2516,7 +2516,7 @@
       "sales_365": 14.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B010TMDWBC",
@@ -2535,7 +2535,7 @@
       "sales_365": 10.0,
       "sales_60": 4.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B010TMI2LC",
@@ -2554,7 +2554,7 @@
       "sales_365": 31.0,
       "sales_60": 4.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B010TMI8O8",
@@ -2573,7 +2573,7 @@
       "sales_365": 28.0,
       "sales_60": 5.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B010TMKZF8",
@@ -2592,7 +2592,7 @@
       "sales_365": 28.0,
       "sales_60": 4.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B010TMQKIO",
@@ -2611,7 +2611,7 @@
       "sales_365": 16.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B010TMWMC2",
@@ -2630,7 +2630,7 @@
       "sales_365": 5.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B075RSNDSB",
@@ -2649,7 +2649,7 @@
       "sales_365": 31.0,
       "sales_60": 5.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B076MK545T",
@@ -2706,7 +2706,7 @@
       "sales_365": 26.0,
       "sales_60": 7.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B089FQ7T2C",
@@ -2744,7 +2744,7 @@
       "sales_365": 34.0,
       "sales_60": 7.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B09X84SXK2",
@@ -2763,7 +2763,7 @@
       "sales_365": 49.0,
       "sales_60": 6.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B09X8GT12M",
@@ -2782,7 +2782,7 @@
       "sales_365": 16.0,
       "sales_60": 6.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF2KK1H",
@@ -2801,7 +2801,7 @@
       "sales_365": 16.0,
       "sales_60": 7.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF3FYVT",
@@ -2820,7 +2820,7 @@
       "sales_365": 24.0,
       "sales_60": 4.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF4LZH7",
@@ -2839,7 +2839,7 @@
       "sales_365": 10.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF4T6N7",
@@ -2858,7 +2858,7 @@
       "sales_365": 11.0,
       "sales_60": 3.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF4TDK6",
@@ -2877,7 +2877,7 @@
       "sales_365": 50.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF6F3CV",
@@ -2896,7 +2896,7 @@
       "sales_365": 12.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF6WSXR",
@@ -2915,7 +2915,7 @@
       "sales_365": 12.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BRYL18YJ",
@@ -2934,7 +2934,7 @@
       "sales_365": 35.0,
       "sales_60": 15.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BRYLVNS6",
@@ -2972,7 +2972,7 @@
       "sales_365": 10.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BW9RNS1K",
@@ -2991,7 +2991,7 @@
       "sales_365": 10.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BX4MM2X5",
@@ -3010,7 +3010,7 @@
       "sales_365": 13.0,
       "sales_60": 3.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0CC3NZ9C5",
@@ -3029,7 +3029,7 @@
       "sales_365": 57.0,
       "sales_60": 12.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0CC3X2DGD",
@@ -3086,7 +3086,7 @@
       "sales_365": 33.0,
       "sales_60": 5.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0DLBP928L",
@@ -3105,7 +3105,7 @@
       "sales_365": 38.0,
       "sales_60": 7.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0DLBR68H9",
@@ -3124,7 +3124,7 @@
       "sales_365": 7.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0DLBTTX9G",
@@ -3143,7 +3143,7 @@
       "sales_365": 32.0,
       "sales_60": 6.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0F1TGDSF4",
@@ -3162,7 +3162,7 @@
       "sales_365": 21.0,
       "sales_60": 5.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0FX35JY9Q",
@@ -3181,7 +3181,7 @@
       "sales_365": 12.0,
       "sales_60": 3.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0FZCW89SY",
@@ -3200,7 +3200,7 @@
       "sales_365": 14.0,
       "sales_60": 5.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0FZD47JDM",
@@ -3219,7 +3219,7 @@
       "sales_365": 23.0,
       "sales_60": 8.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0GLZMWCC6",
@@ -3333,7 +3333,7 @@
       "sales_365": 11.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B005JTK48U",
@@ -3561,7 +3561,7 @@
       "sales_365": 8.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0078FYF9M",
@@ -4682,7 +4682,7 @@
       "sales_365": 5.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B00G12P5FG",
@@ -4872,7 +4872,7 @@
       "sales_365": 28.0,
       "sales_60": 6.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B00K3XLG4S",
@@ -5206,7 +5206,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 473,
+      "supp_stock": 455,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -5670,7 +5670,7 @@
       "sales_365": 5.0,
       "sales_60": 3.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B00KAJ1JO2",
@@ -5727,7 +5727,7 @@
       "sales_365": 11.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B00KAJ1OZ6",
@@ -5738,7 +5738,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 0,
-      "supp_stock": 734,
+      "supp_stock": 730,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -6954,7 +6954,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 1275,
+      "supp_stock": 1269,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -7087,7 +7087,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 1281,
+      "supp_stock": 1263,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -7467,7 +7467,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 570,
+      "supp_stock": 569,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -7486,7 +7486,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 333,
+      "supp_stock": 301,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -7505,7 +7505,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 333,
+      "supp_stock": 301,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -7695,7 +7695,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 174,
+      "supp_stock": 173,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -8379,7 +8379,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 624,
+      "supp_stock": 617,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -8501,7 +8501,7 @@
       "sales_365": 7.0,
       "sales_60": 4.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B01HU3SJAW",
@@ -8577,7 +8577,7 @@
       "sales_365": 8.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B01HU3SWX6",
@@ -8672,7 +8672,7 @@
       "sales_365": 10.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B01HU3WR28",
@@ -9584,7 +9584,7 @@
       "sales_365": 5.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B074PCB4G4",
@@ -9736,7 +9736,7 @@
       "sales_365": 11.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B074PDKX6P",
@@ -12358,7 +12358,7 @@
       "sales_365": 5.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B07NCW6S9W",
@@ -13821,7 +13821,7 @@
       "sales_365": 6.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B07THFR64S",
@@ -15607,7 +15607,7 @@
       "sales_365": 28.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0859N6DC7",
@@ -16340,7 +16340,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 3033049,
+      "supp_stock": 3030049,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -16416,7 +16416,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 477629,
+      "supp_stock": 475129,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -19684,7 +19684,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 280,
+      "supp_stock": 279,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -20273,7 +20273,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 695,
+      "supp_stock": 687,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -20680,7 +20680,7 @@
       "sales_365": 17.0,
       "sales_60": 3.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B09X8D8W7D",
@@ -21869,7 +21869,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 729,
+      "supp_stock": 724,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -22067,7 +22067,7 @@
       "sales_365": 21.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF3VB4B",
@@ -22086,7 +22086,7 @@
       "sales_365": 25.0,
       "sales_60": 5.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF3Y9ZM",
@@ -22238,7 +22238,7 @@
       "sales_365": 27.0,
       "sales_60": 4.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF4J7S3",
@@ -22447,7 +22447,7 @@
       "sales_365": 9.0,
       "sales_60": 3.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF5LG4T",
@@ -22485,7 +22485,7 @@
       "sales_365": 8.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BHF5ZLL5",
@@ -23834,7 +23834,7 @@
       "sales_365": 36.0,
       "sales_60": 4.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0BX4K9JHP",
@@ -24195,7 +24195,7 @@
       "sales_365": 9.0,
       "sales_60": 4.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0CC3P8FR8",
@@ -24233,7 +24233,7 @@
       "sales_365": 14.0,
       "sales_60": 2.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0CC3QQB2X",
@@ -24917,7 +24917,7 @@
       "sales_365": 15.0,
       "sales_60": 3.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0CGZWMYQQ",
@@ -25069,7 +25069,7 @@
       "sales_365": 24.0,
       "sales_60": 3.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0CL3BK4F7",
@@ -26095,7 +26095,7 @@
       "sales_365": 7.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0CWRW8B6R",
@@ -26361,7 +26361,7 @@
       "sales_365": 7.0,
       "sales_60": 1.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0D47S7Q7C",
@@ -26581,7 +26581,7 @@
       "velocity": 0.0,
       "days_left": 0.0,
       "final_rec": 5.0,
-      "supp_stock": 333,
+      "supp_stock": 301,
       "sent_to_fba": 0.0,
       "reserved": 0.0,
       "provider": "Minerales",
@@ -26855,7 +26855,7 @@
       "sales_365": 37.0,
       "sales_60": 5.0,
       "is_back_in_stock": false,
-      "is_slow_moving": false
+      "is_slow_moving": true
     },
     {
       "asin": "B0F1NFV56Z",

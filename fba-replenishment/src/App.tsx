@@ -346,7 +346,9 @@ function App() {
   const filteredSlowMoving = useMemo(() => {
     if (!data) return [];
     
-    let filtered = data.products.filter(p => p.is_slow_moving);
+    let filtered = data.products.filter(p => 
+      p.is_slow_moving || (p.stock_amz > 0 && (p.sales_60 === 0 || p.days_left > 90))
+    );
     
     // Apply column filters
     if (Object.keys(columnFilters).length > 0) {
