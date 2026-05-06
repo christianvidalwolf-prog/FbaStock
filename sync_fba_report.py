@@ -172,6 +172,11 @@ def safe_f(val):
 CSV_URL = "https://app.sellerboard.com/es/automation/reports?id=a1a2f4284b8043c39964edfe3cef86ca&format=csv&t=bbc9d347dff7407dbd01c90884f31121"
 OUTPUT_JSON = "/Users/christianvidalwolf/Stock/fba-replenishment/public/data.json"
 WORK_DIR = "/Users/christianvidalwolf/Stock"
+SELLERBOARD_DIR = "/Volumes/USB SSD/ficheros sellerboard"
+
+# Sales data URLs from SellerBoard
+SALES_URL = "https://app.sellerboard.com/es/automation/reports?id=a258a124dd524541be35028b6a172013&format=csv&t=bbc9d347dff7407dbd01c90884f31121"
+
 VENTAS_FILE = "/Users/christianvidalwolf/Stock/Ventas 365.xlsx"
 VENTAS_60_FILE = "/Users/christianvidalwolf/Stock/ventas 60 dias.xlsx"
 
@@ -403,40 +408,129 @@ def normalize_sku(sku):
     return re.sub(r"(0|1|A|RG|I)?FBA$", "", str(sku).upper().strip())
 
 
+def find_latest_sales_file(prefix):
+    """Find the most recent sales file in USB SSD."""
+    import glob
+
+    pattern = f"{SELLERBOARD_DIR}/{prefix}_*.csv"
+    files = sorted(glob.glob(pattern), reverse=True)
+    return files[0] if files else None
+
+
+def download_and_save_sales():
+    """Download today's sales from SellerBoard and save to USB SSD."""
+    timestamp = pd.Timestamp.now().strftime("%Y-%m-%d")
+    sales_file = f"{SELLERBOARD_DIR}/sellerboard_ventas_{timestamp}.csv"
+
+    try:
+        print(f"Downloading daily sales from SellerBoard...")
+        response = requests.get(SALES_URL, headers=HEADERS, timeout=60)
+        if response.status_code == 200:
+            with open(sales_file, "w") as f:
+                f.write(response.text)
+            print(f"Saved daily sales to {sales_file}")
+            return sales_file
+        else:
+            print(f"Error downloading sales: {response.status_code}")
+    except Exception as e:
+        print(f"Exception downloading sales: {e}")
+    return None
+
+
 def get_sales_data():
+    """Build sales history from all CSV files in USB SSD + fallback Excel files."""
+    import glob
+    from datetime import datetime, timedelta
+
     sales_365 = {}
     sales_60 = {}
 
-    if os.path.exists(VENTAS_FILE):
-        print(f"Reading {VENTAS_FILE}...")
-        try:
-            df = pd.read_excel(VENTAS_FILE)
-            # Group by ASIN to include FBM + FBA sales
-            df["ASIN"] = df["ASIN"].astype(str).str.strip()
-            sales_365 = df.groupby("ASIN")["Units"].sum().to_dict()
-        except Exception as e:
-            print(f"Error 365: {e}")
+    # Find all sales CSV files in USB
+    sales_files = sorted(glob.glob(f"{SELLERBOARD_DIR}/sellerboard_ventas_*.csv"))
+    print(f"Found {len(sales_files)} sales files in USB")
 
-    if os.path.exists(VENTAS_60_FILE):
-        print(f"Reading {VENTAS_60_FILE}...")
-        try:
-            df = pd.read_excel(VENTAS_60_FILE)
-            # Group by ASIN to include FBM + FBA sales
-            df["ASIN"] = df["ASIN"].astype(str).str.strip()
-            sales_60 = df.groupby("ASIN")["Units"].sum().to_dict()
-        except Exception as e:
-            print(f"Error 60: {e}")
+    if sales_files:
+        all_data = []
+        for f in sales_files:
+            try:
+                # Extract date from filename
+                date_str = f.split("_")[-1].replace(".csv", "")
+                file_date = datetime.strptime(date_str, "%Y-%m-%d")
+
+                df = pd.read_csv(f)
+                df["Date"] = pd.to_datetime(
+                    df["Date"], format="%d/%m/%Y", errors="coerce"
+                )
+                # Units are spread across multiple columns (UnitsOrganic, UnitsPPC, etc.)
+                df["ASIN"] = df["ASIN"].astype(str).str.strip()
+                all_data.append(df)
+                print(f"  Loaded {f} ({len(df)} rows)")
+            except Exception as e:
+                print(f"  Error reading {f}: {e}")
+
+        if all_data:
+            combined = pd.concat(all_data, ignore_index=True)
+
+            # Sum all unit columns to get total units sold
+            unit_cols = [col for col in combined.columns if col.startswith("Units")]
+            combined["TotalUnits"] = (
+                combined[unit_cols].apply(pd.to_numeric, errors="coerce").sum(axis=1)
+            )
+
+            # Calculate 60-day sales
+            cutoff_60 = datetime.now() - timedelta(days=60)
+            df_60 = combined[combined["Date"] >= cutoff_60]
+            sales_60 = df_60.groupby("ASIN")["TotalUnits"].sum().to_dict()
+            print(f"Total 60-day ASINs: {len(sales_60)}")
+
+            # Calculate 365-day sales
+            cutoff_365 = datetime.now() - timedelta(days=365)
+            df_365 = combined[combined["Date"] >= cutoff_365]
+            sales_365 = df_365.groupby("ASIN")["TotalUnits"].sum().to_dict()
+            print(f"Total 365-day ASINs: {len(sales_365)}")
+    else:
+        # Fallback to Excel files
+        if os.path.exists(VENTAS_FILE):
+            print(f"Reading {VENTAS_FILE}...")
+            try:
+                df = pd.read_excel(VENTAS_FILE)
+                df["ASIN"] = df["ASIN"].astype(str).str.strip()
+                sales_365 = df.groupby("ASIN")["Units"].sum().to_dict()
+            except Exception as e:
+                print(f"Error 365: {e}")
+
+        if os.path.exists(VENTAS_60_FILE):
+            print(f"Reading {VENTAS_60_FILE}...")
+            try:
+                df = pd.read_excel(VENTAS_60_FILE)
+                df["ASIN"] = df["ASIN"].astype(str).str.strip()
+                sales_60 = df.groupby("ASIN")["Units"].sum().to_dict()
+            except Exception as e:
+                print(f"Error 60: {e}")
 
     return sales_365, sales_60
 
 
 def sync():
     supplier_stocks = download_supplier_data()
+
+    # Download and save today's sales to build historical record
+    today_file = download_and_save_sales()
+
+    # Build sales history from all available CSV files
     sales_365_map, sales_60_map = get_sales_data()
 
     print(f"Fetching FBA report...")
     try:
         response = requests.get(CSV_URL, headers=HEADERS, timeout=60)
+
+        # Save to USB SSD
+        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d")
+        inventory_file = f"{SELLERBOARD_DIR}/sellerboard_inventory_{timestamp}.csv"
+        with open(inventory_file, "w") as f:
+            f.write(response.text)
+        print(f"Saved inventory to {inventory_file}")
+
         reader = csv.DictReader(response.text.splitlines())
         rows = list(reader)
 
@@ -449,7 +543,7 @@ def sync():
         }
         # asin_with_fba: ASINs that already have at least 1 SKU containing 'FBA'
         asin_with_fba = {asin for sku, asin in sku_to_asin.items() if "FBA" in sku}
-        
+
         # Mapping for titles
         sku_to_title = {
             row.get("SKU", "").upper(): row.get("Title", "")
@@ -532,7 +626,8 @@ def sync():
                 and (sales_365 > 8)
                 and (supp_stock > 0)
             )
-            is_slow_moving = stock_amz > 0 and (sales_365 < 5 or sales_60 == 0)
+            # Nueva lógica: Stock AMZ > 0 Y (Sin ventas en 60 días O días de stock > 90)
+            is_slow_moving = stock_amz > 0 and (sales_60 == 0 or days_left > 90)
 
             data.append(
                 {
