@@ -4,6 +4,7 @@ import requests
 import json
 import pandas as pd
 import re
+import glob
 from deep_translator import GoogleTranslator
 
 # Cache para traducciones (evitar traduzir el mismo título múltiples veces)
@@ -172,7 +173,7 @@ def safe_f(val):
 CSV_URL = "https://app.sellerboard.com/es/automation/reports?id=a1a2f4284b8043c39964edfe3cef86ca&format=csv&t=bbc9d347dff7407dbd01c90884f31121"
 OUTPUT_JSON = "/Users/christianvidalwolf/Stock/fba-replenishment/public/data.json"
 WORK_DIR = "/Users/christianvidalwolf/Stock"
-SELLERBOARD_DIR = "/Volumes/USB SSD/ficheros sellerboard"
+SELLERBOARD_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
 
 # Sales data URLs from SellerBoard
 SALES_URL = "https://app.sellerboard.com/es/automation/reports?id=a258a124dd524541be35028b6a172013&format=csv&t=bbc9d347dff7407dbd01c90884f31121"
@@ -222,6 +223,32 @@ HEADERS = {
 }
 
 
+def get_latest_dataweb_file():
+    files = sorted(glob.glob(os.path.join(WORK_DIR, "DataWeb*.csv")))
+    for path in reversed(files):
+        if os.path.getsize(path) > 0:
+            return path
+    return None
+
+
+def load_pipe_stock_file(path, stock_col, encoding):
+    p_stocks = {}
+    with open(path, "r", encoding=encoding, errors="ignore") as f:
+        for line in f:
+            parts = line.split("|")
+            if len(parts) <= stock_col:
+                continue
+            p_id = parts[0].strip().upper()
+            if p_id in {"ID", "ID-ID"}:
+                continue
+            try:
+                p_stock = int(float(parts[stock_col].strip()))
+            except:
+                p_stock = 0
+            p_stocks[p_id] = p_stock
+    return p_stocks
+
+
 def download_supplier_data():
     stocks = {}
     for p_name, config in PROVIDERS.items():
@@ -230,15 +257,18 @@ def download_supplier_data():
             df = None
             sep = config.get("sep", ";")
             enc = config.get("encoding", "latin1")
+            local_fallback = config.get("local_fallback")
 
             if p_name == "dcasa":
-                # Dcasa: prefer local cached file, download if missing
-                local_file = os.path.join(WORK_DIR, os.path.basename(config["url"]))
-                if os.path.exists(local_file):
+                # Dcasa: use the newest valid DataWeb snapshot from the daily download.
+                local_file = get_latest_dataweb_file()
+                if local_file:
+                    print(f"  Using local DCASA file: {os.path.basename(local_file)}")
                     df = pd.read_csv(
                         local_file, sep=sep, encoding=enc, on_bad_lines="skip"
                     )
                 else:
+                    local_file = os.path.join(WORK_DIR, os.path.basename(config["url"]))
                     response = requests.get(config["url"], headers=HEADERS, timeout=30)
                     with open(local_file, "wb") as f:
                         f.write(response.content)
@@ -246,107 +276,86 @@ def download_supplier_data():
                         local_file, sep=sep, encoding=enc, on_bad_lines="skip"
                     )
             else:
-                # Try URL first; if 404 or HTML, fall back to local file
-                local_fallback = config.get("local_fallback")
-                try:
-                    response = requests.get(config["url"], headers=HEADERS, timeout=30)
-                    if (
-                        response.status_code == 200
-                        and "<!DOCTYPE" not in response.text[:200]
-                    ):
+                # Daily update refreshes these local files first; use them as source of truth.
+                if local_fallback and os.path.exists(local_fallback):
+                    print(f"  Using local {p_name} file: {local_fallback}")
+                    if config.get("type") == "pipe":
+                        p_stocks = load_pipe_stock_file(
+                            local_fallback, config["stock_col"], enc
+                        )
+                        stocks[config["key"]] = p_stocks
+                        print(f"Loaded {len(p_stocks)} {p_name} items from local file.")
+                        continue
+                    df = pd.read_csv(
+                        local_fallback,
+                        sep=sep,
+                        encoding=enc,
+                        on_bad_lines="skip",
+                    )
+                else:
+                    try:
+                        response = requests.get(
+                            config["url"], headers=HEADERS, timeout=30
+                        )
+                        if (
+                            response.status_code != 200
+                            or "<!DOCTYPE" in response.text[:200]
+                        ):
+                            raise ValueError(f"URL returned {response.status_code}")
+
                         if config.get("type") == "pipe":
+                            from io import StringIO
+
+                            temp_path = StringIO(response.text)
                             p_stocks = {}
-                            for line in response.text.splitlines():
+                            for line in temp_path:
                                 parts = line.split("|")
-                                if len(parts) > 7:
-                                    p_id = parts[0].strip().upper()
-                                    if p_id == "ID" or p_id == "ID-ID":
-                                        continue
-                                    try:
-                                        p_stock = int(float(parts[7].strip()))
-                                    except:
-                                        p_stock = 0
-                                    p_stocks[p_id] = p_stock
+                                if len(parts) <= config["stock_col"]:
+                                    continue
+                                p_id = parts[0].strip().upper()
+                                if p_id in {"ID", "ID-ID"}:
+                                    continue
+                                try:
+                                    p_stock = int(
+                                        float(parts[config["stock_col"]].strip())
+                                    )
+                                except:
+                                    p_stock = 0
+                                p_stocks[p_id] = p_stock
                             stocks[config["key"]] = p_stocks
                             print(f"Loaded {len(p_stocks)} {p_name} items from URL.")
                             continue
-                        else:
-                            from io import StringIO
 
-                            df = pd.read_csv(
-                                StringIO(response.text),
-                                sep=sep,
-                                encoding=enc,
-                                on_bad_lines="skip",
-                            )
-                    elif local_fallback and os.path.exists(local_fallback):
-                        print(
-                            f"  URL returned {response.status_code} or Error, using local fallback: {local_fallback}"
+                        from io import StringIO
+
+                        df = pd.read_csv(
+                            StringIO(response.text),
+                            sep=sep,
+                            encoding=enc,
+                            on_bad_lines="skip",
                         )
-                        # Check if it's the pipe-separated XML feed for Minerales
-                        if p_name == "minerales" and local_fallback.endswith(".xml"):
-                            p_stocks = {}
-                            with open(local_fallback, "r", encoding=enc) as f:
-                                for line in f:
-                                    parts = line.split("|")
-                                    if len(parts) > 7:
-                                        p_id = parts[0].strip().upper()
-                                        if p_id == "ID":
-                                            continue
-                                        try:
-                                            p_stock = int(float(parts[7].strip()))
-                                        except:
-                                            p_stock = 0
-                                        p_stocks[p_id] = p_stock
-                            stocks[config["key"]] = p_stocks
+                    except Exception as url_err:
+                        if local_fallback and os.path.exists(local_fallback):
                             print(
-                                f"Loaded {len(p_stocks)} {p_name} items from fallback."
+                                f"  URL error ({url_err}), using local fallback: {local_fallback}"
                             )
-                            continue  # Skip the normal CSV parsing loop below
-                        else:
+                            if config.get("type") == "pipe":
+                                p_stocks = load_pipe_stock_file(
+                                    local_fallback, config["stock_col"], enc
+                                )
+                                stocks[config["key"]] = p_stocks
+                                print(
+                                    f"Loaded {len(p_stocks)} {p_name} items from fallback."
+                                )
+                                continue
                             df = pd.read_csv(
                                 local_fallback,
                                 sep=sep,
                                 encoding=enc,
                                 on_bad_lines="skip",
                             )
-                    else:
-                        raise ValueError(
-                            f"URL returned {response.status_code} and no local fallback"
-                        )
-                except Exception as url_err:
-                    if local_fallback and os.path.exists(local_fallback):
-                        print(
-                            f"  URL error ({url_err}), using local fallback: {local_fallback}"
-                        )
-                        if p_name == "minerales" and local_fallback.endswith(".xml"):
-                            p_stocks = {}
-                            with open(local_fallback, "r", encoding=enc) as f:
-                                for line in f:
-                                    parts = line.split("|")
-                                    if len(parts) > 7:
-                                        p_id = parts[0].strip().upper()
-                                        if p_id == "ID":
-                                            continue
-                                        try:
-                                            p_stock = int(float(parts[7].strip()))
-                                        except:
-                                            p_stock = 0
-                                        p_stocks[p_id] = p_stock
-                            stocks[config["key"]] = p_stocks
-                            print(
-                                f"Loaded {len(p_stocks)} {p_name} items from fallback."
-                            )
-                            continue
                         else:
-                            df = pd.read_csv(
-                                local_fallback,
-                                sep=sep,
-                                encoding=enc,
-                                on_bad_lines="skip",
-                            )
-                    else:
-                        raise
+                            raise
 
             print(f"Loaded {len(df)} {p_name} items.")
 
@@ -417,96 +426,117 @@ def find_latest_sales_file(prefix):
     return files[0] if files else None
 
 
+def get_today_sellerboard_file(prefix):
+    """Return today's SellerBoard snapshot path if it already exists."""
+    timestamp = pd.Timestamp.now().strftime("%Y-%m-%d")
+    path = f"{SELLERBOARD_DIR}/{prefix}_{timestamp}.csv"
+    return path if os.path.exists(path) else None
+
+
+def read_local_sellerboard_file(path):
+    with open(path, "r", encoding="utf-8-sig", errors="replace") as f:
+        return f.read()
+
+
+def get_sellerboard_report(prefix, url):
+    """Use today's USB snapshot when available; otherwise download and save it."""
+    os.makedirs(SELLERBOARD_DIR, exist_ok=True)
+    local_file = get_today_sellerboard_file(prefix)
+    if local_file:
+        print(f"Using local SellerBoard snapshot: {local_file}")
+        return read_local_sellerboard_file(local_file), local_file
+
+    timestamp = pd.Timestamp.now().strftime("%Y-%m-%d")
+    output_file = f"{SELLERBOARD_DIR}/{prefix}_{timestamp}.csv"
+    print(f"Downloading {prefix} from SellerBoard...")
+    response = requests.get(url, headers=HEADERS, timeout=60)
+    response.raise_for_status()
+    text = response.content.decode("utf-8-sig", errors="replace")
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(text)
+    print(f"Saved {prefix} to {output_file}")
+    return text, output_file
+
+
 def download_and_save_sales():
     """Download today's sales from SellerBoard and save to USB SSD."""
-    timestamp = pd.Timestamp.now().strftime("%Y-%m-%d")
-    sales_file = f"{SELLERBOARD_DIR}/sellerboard_ventas_{timestamp}.csv"
-
     try:
-        print(f"Downloading daily sales from SellerBoard...")
-        response = requests.get(SALES_URL, headers=HEADERS, timeout=60)
-        if response.status_code == 200:
-            with open(sales_file, "w") as f:
-                f.write(response.text)
-            print(f"Saved daily sales to {sales_file}")
-            return sales_file
-        else:
-            print(f"Error downloading sales: {response.status_code}")
+        _, sales_file = get_sellerboard_report("sellerboard_ventas", SALES_URL)
+        return sales_file
     except Exception as e:
         print(f"Exception downloading sales: {e}")
     return None
 
 
 def get_sales_data():
-    """Build sales history from all CSV files in USB SSD + fallback Excel files."""
+    """Build sales history: prioritize Excel files (60 & 365 days), fallback to CSV."""
     import glob
     from datetime import datetime, timedelta
 
     sales_365 = {}
     sales_60 = {}
 
-    # Find all sales CSV files in USB
-    sales_files = sorted(glob.glob(f"{SELLERBOARD_DIR}/sellerboard_ventas_*.csv"))
-    print(f"Found {len(sales_files)} sales files in USB")
+    # First: Read Excel files (they have full 60/365 day history)
+    if os.path.exists(VENTAS_FILE):
+        print(f"Reading {VENTAS_FILE}...")
+        try:
+            df = pd.read_excel(VENTAS_FILE)
+            df["ASIN"] = df["ASIN"].astype(str).str.strip()
+            sales_365 = df.groupby("ASIN")["Units"].sum().to_dict()
+            print(f"  365-day sales from Excel: {len(sales_365)} ASINs")
+        except Exception as e:
+            print(f"Error reading {VENTAS_FILE}: {e}")
 
-    if sales_files:
-        all_data = []
-        for f in sales_files:
-            try:
-                # Extract date from filename
-                date_str = f.split("_")[-1].replace(".csv", "")
-                file_date = datetime.strptime(date_str, "%Y-%m-%d")
+    if os.path.exists(VENTAS_60_FILE):
+        print(f"Reading {VENTAS_60_FILE}...")
+        try:
+            df = pd.read_excel(VENTAS_60_FILE)
+            df["ASIN"] = df["ASIN"].astype(str).str.strip()
+            sales_60 = df.groupby("ASIN")["Units"].sum().to_dict()
+            print(f"  60-day sales from Excel: {len(sales_60)} ASINs")
+        except Exception as e:
+            print(f"Error reading {VENTAS_60_FILE}: {e}")
 
-                df = pd.read_csv(f)
-                df["Date"] = pd.to_datetime(
-                    df["Date"], format="%d/%m/%Y", errors="coerce"
+    # Second: If no Excel data, try CSV files from USB
+    if not sales_365 and not sales_60:
+        sales_files = sorted(glob.glob(f"{SELLERBOARD_DIR}/sellerboard_ventas_*.csv"))
+        print(f"Found {len(sales_files)} sales files in USB")
+
+        if sales_files:
+            all_data = []
+            for f in sales_files:
+                try:
+                    date_str = f.split("_")[-1].replace(".csv", "")
+                    file_date = datetime.strptime(date_str, "%Y-%m-%d")
+
+                    df = pd.read_csv(f)
+                    df["Date"] = pd.to_datetime(
+                        df["Date"], format="%d/%m/%Y", errors="coerce"
+                    )
+                    df["ASIN"] = df["ASIN"].astype(str).str.strip()
+                    all_data.append(df)
+                    print(f"  Loaded {f} ({len(df)} rows)")
+                except Exception as e:
+                    print(f"  Error reading {f}: {e}")
+
+            if all_data:
+                combined = pd.concat(all_data, ignore_index=True)
+                unit_cols = [col for col in combined.columns if col.startswith("Units")]
+                combined["TotalUnits"] = (
+                    combined[unit_cols]
+                    .apply(pd.to_numeric, errors="coerce")
+                    .sum(axis=1)
                 )
-                # Units are spread across multiple columns (UnitsOrganic, UnitsPPC, etc.)
-                df["ASIN"] = df["ASIN"].astype(str).str.strip()
-                all_data.append(df)
-                print(f"  Loaded {f} ({len(df)} rows)")
-            except Exception as e:
-                print(f"  Error reading {f}: {e}")
 
-        if all_data:
-            combined = pd.concat(all_data, ignore_index=True)
+                cutoff_60 = datetime.now() - timedelta(days=60)
+                df_60 = combined[combined["Date"] >= cutoff_60]
+                sales_60 = df_60.groupby("ASIN")["TotalUnits"].sum().to_dict()
+                print(f"Total 60-day ASINs: {len(sales_60)}")
 
-            # Sum all unit columns to get total units sold
-            unit_cols = [col for col in combined.columns if col.startswith("Units")]
-            combined["TotalUnits"] = (
-                combined[unit_cols].apply(pd.to_numeric, errors="coerce").sum(axis=1)
-            )
-
-            # Calculate 60-day sales
-            cutoff_60 = datetime.now() - timedelta(days=60)
-            df_60 = combined[combined["Date"] >= cutoff_60]
-            sales_60 = df_60.groupby("ASIN")["TotalUnits"].sum().to_dict()
-            print(f"Total 60-day ASINs: {len(sales_60)}")
-
-            # Calculate 365-day sales
-            cutoff_365 = datetime.now() - timedelta(days=365)
-            df_365 = combined[combined["Date"] >= cutoff_365]
-            sales_365 = df_365.groupby("ASIN")["TotalUnits"].sum().to_dict()
-            print(f"Total 365-day ASINs: {len(sales_365)}")
-    else:
-        # Fallback to Excel files
-        if os.path.exists(VENTAS_FILE):
-            print(f"Reading {VENTAS_FILE}...")
-            try:
-                df = pd.read_excel(VENTAS_FILE)
-                df["ASIN"] = df["ASIN"].astype(str).str.strip()
-                sales_365 = df.groupby("ASIN")["Units"].sum().to_dict()
-            except Exception as e:
-                print(f"Error 365: {e}")
-
-        if os.path.exists(VENTAS_60_FILE):
-            print(f"Reading {VENTAS_60_FILE}...")
-            try:
-                df = pd.read_excel(VENTAS_60_FILE)
-                df["ASIN"] = df["ASIN"].astype(str).str.strip()
-                sales_60 = df.groupby("ASIN")["Units"].sum().to_dict()
-            except Exception as e:
-                print(f"Error 60: {e}")
+                cutoff_365 = datetime.now() - timedelta(days=365)
+                df_365 = combined[combined["Date"] >= cutoff_365]
+                sales_365 = df_365.groupby("ASIN")["TotalUnits"].sum().to_dict()
+                print(f"Total 365-day ASINs: {len(sales_365)}")
 
     return sales_365, sales_60
 
@@ -522,16 +552,12 @@ def sync():
 
     print(f"Fetching FBA report...")
     try:
-        response = requests.get(CSV_URL, headers=HEADERS, timeout=60)
+        inventory_text, inventory_file = get_sellerboard_report(
+            "sellerboard_inventory", CSV_URL
+        )
+        print(f"Reading inventory from {inventory_file}")
 
-        # Save to USB SSD
-        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d")
-        inventory_file = f"{SELLERBOARD_DIR}/sellerboard_inventory_{timestamp}.csv"
-        with open(inventory_file, "w") as f:
-            f.write(response.text)
-        print(f"Saved inventory to {inventory_file}")
-
-        reader = csv.DictReader(response.text.splitlines())
+        reader = csv.DictReader(inventory_text.splitlines())
         rows = list(reader)
 
         # ── ASIN-based lookup maps (built from the FULL inventory, not just FBA rows) ──
@@ -603,6 +629,7 @@ def sync():
                 asin = f"MISSING_{idx}"
 
             transit = sent_to_fba + reserved
+            effective_stock = stock_amz + transit
 
             # REGLA: Si el ASIN ya tiene stock en cualquier SKU, no recomendar reorder
             # a menos que el tránsito sea insuficiente
@@ -642,9 +669,10 @@ def sync():
                     "supp_stock": supp_stock,
                     "sent_to_fba": sent_to_fba,
                     "reserved": reserved,
+                    "effective_stock": effective_stock,
                     "provider": provider_name,
                     "status": "critical"
-                    if (days_left <= 7 or (stock_amz + transit) == 0)
+                    if (days_left <= 7 or effective_stock == 0)
                     else ("warning" if days_left <= 15 else "ok"),
                     "sales_365": sales_365,
                     "sales_60": sales_60,

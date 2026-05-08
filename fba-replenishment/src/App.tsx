@@ -52,6 +52,10 @@ interface Data {
 
 const PROVIDERS = ['All', 'Signes', 'Minerales', 'Dcasa'];
 
+const getEffectiveStock = (product: Product) => (
+  product.effective_stock ?? (product.stock_amz + product.sent_to_fba + product.reserved)
+);
+
 function App() {
   const [data, setData] = useState<Data | null>(null);
   const [activeProvider, setActiveProvider] = useState<string>('All');
@@ -170,6 +174,7 @@ function App() {
       TITULO: p.title,
       'VENTAS 365D': p.sales_365 || 0,
       'VENTAS 60D': p.sales_60 || 0,
+      'STOCK FBA+ENV': getEffectiveStock(p),
       'STOCK FBA': p.stock_amz,
       'ROI %': p.roi,
       PROVEEDOR: p.provider
@@ -204,6 +209,7 @@ function App() {
           TITULO: p.title,
           'VENTAS 60D': p.sales_60 || 0,
           'VENTAS 365D': p.sales_365 || 0,
+          'STOCK FBA+ENV': getEffectiveStock(p),
           'STOCK FBA': p.stock_amz,
           'TRANSITO': p.sent_to_fba,
           'RESERVADO': p.reserved,
@@ -272,7 +278,7 @@ function App() {
             case 'title': cellValue = p.title; break;
             case 'asin': cellValue = p.asin; break;
             case 'sales_365': cellValue = p.sales_365 || 0; break;
-            case 'stock_amz': cellValue = p.stock_amz; break;
+            case 'stock_amz': cellValue = getEffectiveStock(p); break;
             case 'velocity': cellValue = p.velocity; break;
             case 'days_left': cellValue = p.days_left; break;
             case 'supp_stock': cellValue = p.supp_stock; break;
@@ -300,7 +306,7 @@ function App() {
           case 'title': aVal = a.title; bVal = b.title; break;
           case 'asin': aVal = a.asin; bVal = b.asin; break;
           case 'sales_365': aVal = a.sales_365 || 0; bVal = b.sales_365 || 0; break;
-          case 'stock_amz': aVal = a.stock_amz; bVal = b.stock_amz; break;
+          case 'stock_amz': aVal = getEffectiveStock(a); bVal = getEffectiveStock(b); break;
           case 'velocity': aVal = a.velocity; bVal = b.velocity; break;
           case 'days_left': aVal = a.days_left; bVal = b.days_left; break;
           case 'supp_stock': aVal = a.supp_stock; bVal = b.supp_stock; break;
@@ -326,8 +332,8 @@ function App() {
       if (!aNeeds && bNeeds) return 1;
       
       if (aNeeds && bNeeds) {
-        const aZero = a.stock_amz === 0;
-        const bZero = b.stock_amz === 0;
+        const aZero = getEffectiveStock(a) === 0;
+        const bZero = getEffectiveStock(b) === 0;
         
         if (aZero && !bZero) return -1;
         if (!aZero && bZero) return 1;
@@ -960,6 +966,7 @@ function TableRow({
   const isCritical = product.days_left < 7;
   const isWarning = product.days_left >= 7 && product.days_left < 15;
   const outOfStock = product.final_rec > 0 && product.supp_stock === 0;
+  const effectiveStock = getEffectiveStock(product);
 
   return (
     <motion.tr
@@ -1024,12 +1031,22 @@ function TableRow({
       {/* Stock AMZ Compacto */}
       <td className="px-1 py-2 text-center">
         <span className="text-[12px] font-bold tabular-nums text-on-surface leading-none">
-          {product.stock_amz}
+          {effectiveStock}
         </span>
         <div className="flex items-center justify-center gap-0.5 mt-0.5">
+          {(product.sent_to_fba > 0 || product.reserved > 0) && (
+            <span className="text-[8px] font-medium text-on-surface-variant/60">
+              FBA {product.stock_amz}
+            </span>
+          )}
           {product.sent_to_fba > 0 && (
             <span className="text-[8px] font-bold text-indigo-600 bg-indigo-50 px-0.5 rounded border border-indigo-100/50">
               +{product.sent_to_fba}
+            </span>
+          )}
+          {product.reserved > 0 && (
+            <span className="text-[8px] font-bold text-orange-600 bg-orange-50 px-0.5 rounded border border-orange-100/50">
+              R{product.reserved}
             </span>
           )}
         </div>
