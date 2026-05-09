@@ -426,11 +426,16 @@ def find_latest_sales_file(prefix):
     return files[0] if files else None
 
 
-def get_today_sellerboard_file(prefix):
-    """Return today's SellerBoard snapshot path if it already exists."""
-    timestamp = pd.Timestamp.now().strftime("%Y-%m-%d")
-    path = f"{SELLERBOARD_DIR}/{prefix}_{timestamp}.csv"
-    return path if os.path.exists(path) else None
+def get_latest_sellerboard_file(prefix):
+    """Return the most recent SellerBoard snapshot (not just today's)."""
+    import glob
+
+    pattern = f"{SELLERBOARD_DIR}/{prefix}_*.csv"
+    files = sorted(glob.glob(pattern), reverse=True)
+    for f in files:
+        if os.path.exists(f):
+            return f
+    return None
 
 
 def read_local_sellerboard_file(path):
@@ -439,11 +444,11 @@ def read_local_sellerboard_file(path):
 
 
 def get_sellerboard_report(prefix, url):
-    """Use today's USB snapshot when available; otherwise download and save it."""
+    """Use the most recent local snapshot; if none exists, download and save."""
     os.makedirs(SELLERBOARD_DIR, exist_ok=True)
-    local_file = get_today_sellerboard_file(prefix)
+    local_file = get_latest_sellerboard_file(prefix)
     if local_file:
-        print(f"Using local SellerBoard snapshot: {local_file}")
+        print(f"Using latest local SellerBoard snapshot: {local_file}")
         return read_local_sellerboard_file(local_file), local_file
 
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d")

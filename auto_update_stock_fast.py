@@ -13,6 +13,7 @@ CATALOG_FILE = f"{WORK_DIR}/catalog_robust.json"
 EXCEL_PRICES_FILE = f"{WORK_DIR}/excel_prices_final.json"
 OUTPUT_FILE = f"{WORK_DIR}/STOCK AMZ.txt"
 PRECIOS_FILE = f"{WORK_DIR}/precios ES.xlsx"
+STOCK_TREDISER_FILE = f"{WORK_DIR}/STOCK TREDISER.xls"
 SKUS_FORZAR_CERO = {
     "2450VC",
     "2450VCI",  # ASIN B010TN6SXU
@@ -52,6 +53,7 @@ PRECIOS_FIJOS = {
     "40552MD": 22.99,
     "42772MD": 26.99,
     "4359VCI": 10.99,
+    "309766CLM": 9.99,
     "31469MD": 13.99,
     "2388VCI": 15.99,
     "2185651CLM": 9.99,
@@ -384,6 +386,23 @@ def run_fast_update():
         with open(BASE_STOCKS_FILE, "r") as f:
             base_stocks = json.load(f)
         print(f"Loaded {len(base_stocks)} base stocks.")
+    
+    # Load trEDISER Stocks (MD) from Excel
+    trediser_stocks = {}
+    if os.path.exists(STOCK_TREDISER_FILE):
+        print(f"Loading trEDISER stocks from {STOCK_TREDISER_FILE}...")
+        try:
+            df_t = pd.read_excel(STOCK_TREDISER_FILE)
+            df_t = df_t.dropna(subset=['Código'])
+            for _, row in df_t.iterrows():
+                code = str(row['Código']).strip().replace(".0", "")
+                if not code: continue
+                # Stock is in 'Unnamed: 3'
+                stock_val = to_num(row['Unnamed: 3'])
+                trediser_stocks[code] = stock_val
+            print(f"Loaded {len(trediser_stocks)} trEDISER stocks.")
+        except Exception as e:
+            print(f"Error loading trEDISER Excel: {e}")
 
     # Load Prices from precios ES.xlsx
     print(f"Loading prices from {PRECIOS_FILE}...")
@@ -498,7 +517,9 @@ def run_fast_update():
             continue
         seen_skus.add(sku)
 
-        if sku in SKUS_MANUALES:
+        if sku == "41170MDRG":
+            print(f"DEBUG: Entry for {sku}: {entry}")
+        if sku in SKUS_MANUALES and provider != "MD":
             continue
 
         provider = entry["provider"]
@@ -582,8 +603,12 @@ def run_fast_update():
                     final_stock = 0
 
             elif provider == "MD":
-                # Take stock from STOCK ES extract (inicio plus 2023)
-                final_stock = base_stocks.get(sku, 0)
+                # Priority 1: STOCK TREDISER.xls (using numeric ID)
+                # Priority 2: base_stocks.json (using full SKU)
+                if l_id in trediser_stocks:
+                    final_stock = trediser_stocks[l_id]
+                else:
+                    final_stock = base_stocks.get(sku, 0)
 
         except:
             pass

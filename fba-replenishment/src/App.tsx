@@ -147,7 +147,7 @@ function App() {
   }, []);
 
   const fetchData = () => {
-    fetch('/data.json')
+    fetch(`/data.json?v=${Date.now()}`, { cache: 'no-store' })
       .then(res => res.json())
       .then(d => {
         setData(d);
@@ -254,12 +254,14 @@ function App() {
       const isExcluded = excludedSkus.has(p.sku);
       
       if (activeTab === 'reordering') {
-        if (isExcluded) return false; // Don't show excluded in reordering
+        if (isExcluded) return false;
+        const effectiveStock = getEffectiveStock(p);
         const hasSupplierStock = p.supp_stock > 0;
         const needsReorder = p.final_rec > 0;
-        // If it needs reordering but supplier has no stock, we don't show it in this tab
+        // Show products that need reordering OR have effective stock
+        if (!needsReorder && effectiveStock === 0) return false;
         if (needsReorder && !hasSupplierStock) return false;
-        return matchesProvider && matchesSearch && matchesMetric && needsReorder;
+        return matchesProvider && matchesSearch && matchesMetric;
       }
       
       return matchesProvider && matchesSearch && matchesMetric;
@@ -816,7 +818,7 @@ function App() {
                             {p.sales_60 ?? 0}
                           </span>
                         </td>
-                        <td className="px-gutter py-4 text-center font-bold">{p.stock_amz}</td>
+                        <td className="px-gutter py-4 text-center font-bold">{getEffectiveStock(p)}</td>
                         <td className="px-gutter py-4 text-center text-sm">{p.roi}%</td>
                         <td className="px-gutter py-4 text-center">
                           <button className="bg-orange-100 text-orange-700 text-[10px] font-bold px-3 py-1.5 rounded-full hover:bg-orange-200 transition-colors uppercase">
@@ -966,7 +968,6 @@ function TableRow({
   const isCritical = product.days_left < 7;
   const isWarning = product.days_left >= 7 && product.days_left < 15;
   const outOfStock = product.final_rec > 0 && product.supp_stock === 0;
-  const effectiveStock = getEffectiveStock(product);
 
   return (
     <motion.tr
@@ -1031,7 +1032,7 @@ function TableRow({
       {/* Stock AMZ Compacto */}
       <td className="px-1 py-2 text-center">
         <span className="text-[12px] font-bold tabular-nums text-on-surface leading-none">
-          {effectiveStock}
+          {product.effective_stock}
         </span>
         <div className="flex items-center justify-center gap-0.5 mt-0.5">
           {(product.sent_to_fba > 0 || product.reserved > 0) && (

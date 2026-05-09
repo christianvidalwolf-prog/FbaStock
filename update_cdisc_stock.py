@@ -13,6 +13,7 @@ MINERALES_FEED = os.path.join(WORK_DIR, "minerales_feed.xml")
 SIGNES_STOCK = os.path.join(WORK_DIR, "signes_stock.csv")
 CATALOG_FILE = os.path.join(WORK_DIR, "catalog_robust.json")
 BASE_STOCKS_FILE = os.path.join(WORK_DIR, "base_stocks.json")
+STOCK_TREDISER_FILE = os.path.join(WORK_DIR, "STOCK TREDISER.xls")
 
 def to_num(val):
     if val is None or val == "":
@@ -82,7 +83,7 @@ def load_suppliers_data():
         except Exception as e:
             print(f"Error loading Dcasa: {e}")
 
-    # 4. Madelcar (MD)
+    # 4. Madelcar (MD) from base_stocks.json
     if os.path.exists(BASE_STOCKS_FILE):
         try:
             with open(BASE_STOCKS_FILE, "r") as f:
@@ -90,6 +91,20 @@ def load_suppliers_data():
                 stocks["MD"] = md_stocks
         except Exception as e:
             print(f"Error loading Madelcar base stocks: {e}")
+
+    # 5. trEDISER (MD) from Excel
+    if os.path.exists(STOCK_TREDISER_FILE):
+        try:
+            df_t = pd.read_excel(STOCK_TREDISER_FILE)
+            df_t = df_t.dropna(subset=['Código'])
+            for _, row in df_t.iterrows():
+                code = str(row['Código']).strip().replace(".0", "")
+                if not code: continue
+                # Store by numeric code
+                stock_val = to_num(row['Unnamed: 3'])
+                stocks["MD"][code] = stock_val
+        except Exception as e:
+            print(f"Error loading trEDISER Excel: {e}")
 
     return stocks
 
@@ -162,7 +177,11 @@ def main():
         if prov and clean_id:
             raw_stock = 0
             if prov == "MD":
-                raw_stock = supplier_stocks.get("MD", {}).get(sku, 0)
+                # Check numeric ID first (from TREDISER Excel)
+                raw_stock = supplier_stocks.get("MD", {}).get(clean_id, 0)
+                if raw_stock == 0:
+                    # Fallback to full SKU (from base_stocks.json)
+                    raw_stock = supplier_stocks.get("MD", {}).get(sku, 0)
             else:
                 raw_stock = supplier_stocks.get(prov, {}).get(clean_id, 0)
             
