@@ -3,7 +3,6 @@ import os
 import re
 import glob
 from datetime import datetime
-import json
 
 # --- CONFIGURATION ---
 WORK_DIR = "/Users/christianvidalwolf/Stock"
@@ -83,16 +82,7 @@ def load_suppliers_data():
         except Exception as e:
             print(f"Error loading Dcasa: {e}")
 
-    # 4. Madelcar (MD) from base_stocks.json
-    if os.path.exists(BASE_STOCKS_FILE):
-        try:
-            with open(BASE_STOCKS_FILE, "r") as f:
-                md_stocks = json.load(f)
-                stocks["MD"] = md_stocks
-        except Exception as e:
-            print(f"Error loading Madelcar base stocks: {e}")
-
-    # 5. trEDISER (MD) from Excel
+    # 4. trEDISER (MD) from Excel — only source for MD stock
     if os.path.exists(STOCK_TREDISER_FILE):
         try:
             df_t = pd.read_excel(STOCK_TREDISER_FILE)
@@ -177,11 +167,8 @@ def main():
         if prov and clean_id:
             raw_stock = 0
             if prov == "MD":
-                # Check numeric ID first (from TREDISER Excel)
+                # Only use numeric ID from TREDISER Excel
                 raw_stock = supplier_stocks.get("MD", {}).get(clean_id, 0)
-                if raw_stock == 0:
-                    # Fallback to full SKU (from base_stocks.json)
-                    raw_stock = supplier_stocks.get("MD", {}).get(sku, 0)
             else:
                 raw_stock = supplier_stocks.get(prov, {}).get(clean_id, 0)
             

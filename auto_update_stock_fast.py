@@ -15,6 +15,7 @@ OUTPUT_FILE = f"{WORK_DIR}/STOCK AMZ.txt"
 PRECIOS_FILE = f"{WORK_DIR}/precios ES.xlsx"
 STOCK_TREDISER_FILE = f"{WORK_DIR}/STOCK TREDISER.xls"
 SKUS_FORZAR_CERO = {
+    "4100VCO",
     "2450VC",
     "2450VCI",  # ASIN B010TN6SXU
     "11631VC", "1237VC", "1238VC", "1652VC", "1653VC", "1684VC", "1688VC", "1717VC",
@@ -517,13 +518,11 @@ def run_fast_update():
             continue
         seen_skus.add(sku)
 
-        if sku == "41170MDRG":
-            print(f"DEBUG: Entry for {sku}: {entry}")
-        if sku in SKUS_MANUALES and provider != "MD":
-            continue
-
         provider = entry["provider"]
         l_id = entry["id"]
+
+        if sku in SKUS_MANUALES and provider != "MD":
+            continue
 
         sheet_map = {
             "VC": "INICIOVC",
@@ -608,7 +607,7 @@ def run_fast_update():
                 if l_id in trediser_stocks:
                     final_stock = trediser_stocks[l_id]
                 else:
-                    final_stock = base_stocks.get(sku, 0)
+                    final_stock = 0
 
         except:
             pass

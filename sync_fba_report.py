@@ -1,5 +1,6 @@
 import csv
 import os
+import time
 import requests
 import json
 import pandas as pd
@@ -444,12 +445,15 @@ def read_local_sellerboard_file(path):
 
 
 def get_sellerboard_report(prefix, url):
-    """Use the most recent local snapshot; if none exists, download and save."""
+    """Use local snapshot if < 12h old; otherwise download fresh."""
     os.makedirs(SELLERBOARD_DIR, exist_ok=True)
     local_file = get_latest_sellerboard_file(prefix)
     if local_file:
-        print(f"Using latest local SellerBoard snapshot: {local_file}")
-        return read_local_sellerboard_file(local_file), local_file
+        age_hours = (time.time() - os.path.getmtime(local_file)) / 3600
+        if age_hours < 12:
+            print(f"Using local SellerBoard snapshot ({age_hours:.1f}h old): {local_file}")
+            return read_local_sellerboard_file(local_file), local_file
+        print(f"Local snapshot too old ({age_hours:.1f}h). Downloading fresh...")
 
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d")
     output_file = f"{SELLERBOARD_DIR}/{prefix}_{timestamp}.csv"
