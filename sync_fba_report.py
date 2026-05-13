@@ -639,6 +639,15 @@ def sync():
 
             transit = sent_to_fba + reserved
             effective_stock = stock_amz + transit
+            velocity = safe_f(row.get("Estimated Sales Velocity", "0"))
+            # Recalculate days_left using effective_stock when transit covers the gap
+            if transit > 0 and days_left <= 7:
+                if velocity > 0:
+                    effective_days = round(effective_stock / velocity)
+                    days_left = max(days_left, effective_days)
+                else:
+                    # No velocity data — assume stock is covered, use sentinel
+                    days_left = 999
 
             # REGLA: Si el ASIN ya tiene stock en cualquier SKU, no recomendar reorder
             # a menos que el tránsito sea insuficiente
@@ -658,6 +667,7 @@ def sync():
 
             is_back_in_stock = (
                 (stock_amz == 0)
+                and (transit == 0)
                 and (sales_60 == 0)
                 and (sales_365 > 8)
                 and (supp_stock > 0)
@@ -672,7 +682,7 @@ def sync():
                     "title": translate_to_spanish(row.get("Title", "")),
                     "roi": roi,
                     "stock_amz": stock_amz,
-                    "velocity": safe_f(row.get("Estimated Sales Velocity", "0")),
+                    "velocity": velocity,
                     "days_left": days_left,
                     "final_rec": final_rec,
                     "supp_stock": supp_stock,

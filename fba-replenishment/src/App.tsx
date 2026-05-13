@@ -1032,7 +1032,7 @@ function TableRow({
       {/* Stock AMZ Compacto */}
       <td className="px-1 py-2 text-center">
         <span className="text-[12px] font-bold tabular-nums text-on-surface leading-none">
-          {product.effective_stock}
+          {getEffectiveStock(product)}
         </span>
         <div className="flex items-center justify-center gap-0.5 mt-0.5">
           {(product.sent_to_fba > 0 || product.reserved > 0) && (
@@ -1059,7 +1059,7 @@ function TableRow({
           <span className={`text-[11px] font-bold tabular-nums px-1.5 py-0 rounded-full ${
             isCritical ? 'bg-red-100 text-error' : isWarning ? 'bg-orange-100 text-orange-700' : 'bg-emerald-50 text-emerald-700'
           }`}>
-            {product.days_left}d
+            {product.days_left >= 999 ? '∞' : `${product.days_left}d`}
           </span>
           <span className="text-[8px] tabular-nums text-on-surface-variant/40">
             {product.velocity.toFixed(1)}
