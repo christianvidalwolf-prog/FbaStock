@@ -523,6 +523,7 @@ def get_sales_data():
 
     sales_365 = {}
     sales_60 = {}
+    sales_7 = {}
 
     if os.path.exists(VENTAS_FILE):
         print(f"Reading {VENTAS_FILE}...")
@@ -544,6 +545,7 @@ def get_sales_data():
         except Exception as e:
             print(f"Error reading {VENTAS_60_FILE}: {e}")
 
+    cutoff_7 = datetime.now() - timedelta(days=7)
     cutoff_60 = datetime.now() - timedelta(days=60)
     sales_files = get_sellerboard_snapshot_files("sellerboard_ventas")
     if sales_files:
@@ -562,17 +564,23 @@ def get_sales_data():
                 )
 
                 df_60 = df[df["Date"] >= cutoff_60]
+                df_7 = df[df["Date"] >= cutoff_7]
                 for asin, group in df_60.groupby("ASIN"):
                     units = group["TotalUnits"].sum()
                     if units > 0:
                         sales_60[asin] = sales_60.get(asin, 0) + units
+                for asin, group in df_7.groupby("ASIN"):
+                    units = group["TotalUnits"].sum()
+                    if units > 0:
+                        sales_7[asin] = sales_7.get(asin, 0) + units
                 print(f"  Added from {os.path.basename(f)}: {len(df_60)} rows")
             except Exception as e:
                 print(f"  Error reading {f}: {e}")
 
     print(f"  Total 60-day sales (Excel + daily): {len(sales_60)} ASINs")
+    print(f"  Total 7-day sales (daily): {len(sales_7)} ASINs")
 
-    return sales_365, sales_60
+    return sales_365, sales_60, sales_7
 
 
 def sync():
@@ -582,7 +590,7 @@ def sync():
     today_file = download_and_save_sales()
 
     # Build sales history from all available CSV files
-    sales_365_map, sales_60_map = get_sales_data()
+    sales_365_map, sales_60_map, sales_7_map = get_sales_data()
 
     print(f"Fetching FBA report...")
     try:
@@ -687,8 +695,9 @@ def sync():
                     calculated_need = max(amazon_rec, 5)
                 final_rec = min(max(0, calculated_need - transit), supp_stock)
 
-            sales_365 = sales_365_map.get(asin, 0)
-            sales_60 = sales_60_map.get(asin, 0)
+            sales_365 = int(sales_365_map.get(asin, 0) or 0)
+            sales_60 = int(sales_60_map.get(asin, 0) or 0)
+            sales_7 = int(sales_7_map.get(asin, 0) or 0)
 
             is_back_in_stock = (
                 (stock_amz == 0)
@@ -720,6 +729,7 @@ def sync():
                     else ("warning" if days_left <= 15 else "ok"),
                     "sales_365": sales_365,
                     "sales_60": sales_60,
+                    "sales_7": sales_7,
                     "is_back_in_stock": is_back_in_stock,
                     "is_slow_moving": is_slow_moving,
                 }
@@ -755,7 +765,8 @@ def sync():
                     "asin": asin,
                     "sku": base_sku,
                     "title": translate_to_spanish(sku_to_title.get(base_sku, "")),
-                    "sales_365": units,
+                    "sales_365": int(units or 0),
+                    "sales_7": int(sales_7_map.get(asin, 0) or 0),
                     "provider": {"SG": "Signes", "VC": "Minerales", "DC": "Dcasa"}.get(
                         prov_key, "Unknown"
                     ),
