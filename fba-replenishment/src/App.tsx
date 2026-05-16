@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Papa from 'papaparse';
 
@@ -56,6 +56,20 @@ const getEffectiveStock = (product: Product) => (
   product.effective_stock ?? (product.stock_amz + product.sent_to_fba + product.reserved)
 );
 
+type ExportRow = Record<string, string | number>;
+
+function loadSetFromLocalStorage(key: string) {
+  const saved = localStorage.getItem(key);
+  if (!saved) return new Set<string>();
+
+  try {
+    return new Set<string>(JSON.parse(saved));
+  } catch (e) {
+    console.error(`Error loading ${key}`, e);
+    return new Set<string>();
+  }
+}
+
 function App() {
   const [data, setData] = useState<Data | null>(null);
   const [activeProvider, setActiveProvider] = useState<string>('All');
@@ -72,30 +86,10 @@ function App() {
   const [columnFilters, setColumnFilters] = useState<{ [key: string]: string }>({});
   
   // Excluded SKUs (No restock)
-  const [excludedSkus, setExcludedSkus] = useState<Set<string>>(new Set());
+  const [excludedSkus, setExcludedSkus] = useState<Set<string>>(() => loadSetFromLocalStorage('excluded_skus'));
   
   // Discarded recommendations
-  const [discardedRecommendations, setDiscardedRecommendations] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const savedExcluded = localStorage.getItem('excluded_skus');
-    if (savedExcluded) {
-      try {
-        setExcludedSkus(new Set(JSON.parse(savedExcluded)));
-      } catch (e) {
-        console.error("Error loading excluded skus", e);
-      }
-    }
-
-    const savedDiscarded = localStorage.getItem('discarded_recommendations');
-    if (savedDiscarded) {
-      try {
-        setDiscardedRecommendations(new Set(JSON.parse(savedDiscarded)));
-      } catch (e) {
-        console.error("Error loading discarded recommendations", e);
-      }
-    }
-  }, []);
+  const [discardedRecommendations, setDiscardedRecommendations] = useState<Set<string>>(() => loadSetFromLocalStorage('discarded_recommendations'));
 
   const toggleExclude = (sku: string) => {
     setExcludedSkus(prev => {
@@ -142,11 +136,7 @@ function App() {
     setCurrentPage(1); // Reset on tab change
   }, [activeTab, inventoryFilter, activeProvider]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = () => {
+  function fetchData() {
     fetch(`/data.json?v=${Date.now()}`, { cache: 'no-store' })
       .then(res => res.json())
       .then(d => {
@@ -155,7 +145,11 @@ function App() {
       .catch(err => {
         console.error("Failed to load data:", err);
       });
-  };
+  }
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleSync = () => {
     setIsSyncing(true);
@@ -168,7 +162,7 @@ function App() {
   const exportSlowMoving = () => {
     if (!filteredSlowMoving.length) return;
     
-    const exportData = filteredSlowMoving.map(p => ({
+    const exportData: ExportRow[] = filteredSlowMoving.map(p => ({
       SKU: p.sku,
       ASIN: p.asin,
       TITULO: p.title,
@@ -196,30 +190,33 @@ function App() {
   const exportCurrentTable = () => {
     if (!filteredProducts.length) return;
     
-    const exportData = activeTab === 'recommendations' 
-      ? data?.fbm_recommendations?.map(p => ({
-          SKU: p.sku,
-          TITULO: p.title || '',
-          'VENTAS 365D (FBM)': p.sales_365,
-          RECOMENDACION: 'Mover a FBA'
-        })) || []
-      : (filteredProducts.map(p => ({
-          SKU: p.sku,
-          ASIN: p.asin,
-          TITULO: p.title,
-          'VENTAS 60D': p.sales_60 || 0,
-          'VENTAS 365D': p.sales_365 || 0,
-          'STOCK FBA+ENV': getEffectiveStock(p),
-          'STOCK FBA': p.stock_amz,
-          'TRANSITO': p.sent_to_fba,
-          'RESERVADO': p.reserved,
-          'VELOCIDAD': p.velocity.toFixed(2),
-          'DIAS COBERTURA': p.days_left,
-          'STOCK PROV': p.supp_stock,
-          'A PEDIR': excludedSkus.has(p.sku) ? 0 : p.final_rec,
-          PROVEEDOR: p.provider,
-          EXCLUIDO: excludedSkus.has(p.sku) ? 'SI' : 'NO'
-        })) as any[]);
+    let exportData: ExportRow[];
+    if (activeTab === 'recommendations') {
+      exportData = data?.fbm_recommendations?.map(p => ({
+        SKU: p.sku,
+        TITULO: p.title || '',
+        'VENTAS 365D (FBM)': p.sales_365,
+        RECOMENDACION: 'Mover a FBA'
+      })) || [];
+    } else {
+      exportData = filteredProducts.map(p => ({
+        SKU: p.sku,
+        ASIN: p.asin,
+        TITULO: p.title,
+        'VENTAS 60D': p.sales_60 || 0,
+        'VENTAS 365D': p.sales_365 || 0,
+        'STOCK FBA+ENV': getEffectiveStock(p),
+        'STOCK FBA': p.stock_amz,
+        'TRANSITO': p.sent_to_fba,
+        'RESERVADO': p.reserved,
+        'VELOCIDAD': p.velocity.toFixed(2),
+        'DIAS COBERTURA': p.days_left,
+        'STOCK PROV': p.supp_stock,
+        'A PEDIR': excludedSkus.has(p.sku) ? 0 : p.final_rec,
+        PROVEEDOR: p.provider,
+        EXCLUIDO: excludedSkus.has(p.sku) ? 'SI' : 'NO'
+      }));
+    }
 
     const csv = Papa.unparse(exportData, { delimiter: ';' });
     const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
@@ -234,7 +231,7 @@ function App() {
     document.body.removeChild(link);
   };
 
-  const filteredProducts = useMemo(() => {
+  const filteredProducts = (() => {
     if (!data) return [];
     
     // 1. Initial Filtering
@@ -274,7 +271,7 @@ function App() {
         for (const [col, value] of Object.entries(columnFilters)) {
           if (!value) continue;
           const lowerValue = value.toLowerCase();
-          let cellValue: string | number = '';
+          let cellValue: string | number;
           switch (col) {
             case 'sku': cellValue = p.sku; break;
             case 'title': cellValue = p.title; break;
@@ -301,8 +298,8 @@ function App() {
     // 3. Sorting (if user sorted)
     if (sortConfig) {
       return columnFiltered.sort((a, b) => {
-        let aVal: string | number = '';
-        let bVal: string | number = '';
+        let aVal: string | number;
+        let bVal: string | number;
         switch (sortConfig.column) {
           case 'sku': aVal = a.sku; bVal = b.sku; break;
           case 'title': aVal = a.title; bVal = b.title; break;
@@ -349,9 +346,9 @@ function App() {
       
       return 0;
     });
-  }, [data, activeProvider, searchTerm, activeTab, inventoryFilter, sortConfig, columnFilters]);
+  })();
 
-  const filteredSlowMoving = useMemo(() => {
+  const filteredSlowMoving = (() => {
     if (!data) return [];
     
     let filtered = data.products.filter(p => 
@@ -364,7 +361,7 @@ function App() {
         for (const [col, value] of Object.entries(columnFilters)) {
           if (!value) continue;
           const lowerValue = value.toLowerCase();
-          let cellValue: string | number = '';
+          let cellValue: string | number;
           switch (col) {
             case 'sku': cellValue = p.sku; break;
             case 'title': cellValue = p.title; break;
@@ -387,8 +384,8 @@ function App() {
     // Apply sorting
     if (sortConfig) {
       return filtered.sort((a, b) => {
-        let aVal: string | number = '';
-        let bVal: string | number = '';
+        let aVal: string | number;
+        let bVal: string | number;
         switch (sortConfig.column) {
           case 'sku': aVal = a.sku; bVal = b.sku; break;
           case 'title': aVal = a.title; bVal = b.title; break;
@@ -408,7 +405,7 @@ function App() {
     }
 
     return filtered;
-  }, [data, sortConfig, columnFilters]);
+  })();
 
   if (!data) {
     return (
@@ -818,7 +815,13 @@ function App() {
                             {p.sales_60 ?? 0}
                           </span>
                         </td>
-                        <td className="px-gutter py-4 text-center font-bold">{getEffectiveStock(p)}</td>
+                        <td className="px-gutter py-4 text-center font-bold">
+                          <StockCell
+                            stock={p.stock_amz}
+                            sentToFba={p.sent_to_fba}
+                            reserved={p.reserved}
+                          />
+                        </td>
                         <td className="px-gutter py-4 text-center text-sm">{p.roi}%</td>
                         <td className="px-gutter py-4 text-center">
                           <button className="bg-orange-100 text-orange-700 text-[10px] font-bold px-3 py-1.5 rounded-full hover:bg-orange-200 transition-colors uppercase">
@@ -952,6 +955,59 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
+function StockCell({
+  stock,
+  sentToFba,
+  reserved,
+  compact = false,
+}: {
+  stock: number;
+  sentToFba: number;
+  reserved: number;
+  compact?: boolean;
+}) {
+  const transit = sentToFba;
+  return (
+    <div className="flex flex-col items-center">
+      <span
+        className={
+          compact
+            ? 'text-[12px] font-bold tabular-nums text-on-surface leading-none'
+            : 'text-sm font-bold tabular-nums text-on-surface'
+        }
+      >
+        {stock}
+      </span>
+      {(transit > 0 || reserved > 0) && (
+        <div className="mt-0.5 flex items-center justify-center gap-0.5 flex-wrap">
+          {transit > 0 && (
+            <span
+              className={
+                compact
+                  ? 'text-[8px] font-bold text-indigo-600 bg-indigo-50 px-0.5 rounded border border-indigo-100/50'
+                  : 'text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-100/50'
+              }
+            >
+              +{transit}
+            </span>
+          )}
+          {reserved > 0 && (
+            <span
+              className={
+                compact
+                  ? 'text-[8px] font-bold text-orange-600 bg-orange-50 px-0.5 rounded border border-orange-100/50'
+                  : 'text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full border border-orange-100/50'
+              }
+            >
+              R{reserved}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Table Row ────────────────────────────────────────────────────────────────
 
 function TableRow({ 
@@ -1031,26 +1087,12 @@ function TableRow({
 
       {/* Stock AMZ Compacto */}
       <td className="px-1 py-2 text-center">
-        <span className="text-[12px] font-bold tabular-nums text-on-surface leading-none">
-          {getEffectiveStock(product)}
-        </span>
-        <div className="flex items-center justify-center gap-0.5 mt-0.5">
-          {(product.sent_to_fba > 0 || product.reserved > 0) && (
-            <span className="text-[8px] font-medium text-on-surface-variant/60">
-              FBA {product.stock_amz}
-            </span>
-          )}
-          {product.sent_to_fba > 0 && (
-            <span className="text-[8px] font-bold text-indigo-600 bg-indigo-50 px-0.5 rounded border border-indigo-100/50">
-              +{product.sent_to_fba}
-            </span>
-          )}
-          {product.reserved > 0 && (
-            <span className="text-[8px] font-bold text-orange-600 bg-orange-50 px-0.5 rounded border border-orange-100/50">
-              R{product.reserved}
-            </span>
-          )}
-        </div>
+        <StockCell
+          stock={product.stock_amz}
+          sentToFba={product.sent_to_fba}
+          reserved={product.reserved}
+          compact
+        />
       </td>
 
       {/* Cobertura (Velocidad + Días) */}

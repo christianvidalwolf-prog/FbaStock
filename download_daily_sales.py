@@ -11,7 +11,7 @@ y hace un append al historial de ventas diario (sales_history.csv).
   fichero en lugar de 'ventas 60 dias.xlsx'.
 
 Ejecutar diariamente a las 9:00 con cron:
-  0 9 * * * /usr/bin/python3 /Users/christianvidalwolf/Stock/download_daily_sales.py >> "/Volumes/USB SSD/Ficheros sellerboard/daily_sales.log" 2>&1
+  0 9 * * * /usr/bin/python3 /Users/christianvidalwolf/Stock/download_daily_sales.py >> "/Users/christianvidalwolf/Stock/logs/daily_sales.log" 2>&1
 """
 
 import requests
@@ -27,21 +27,32 @@ REPORT_URL = (
     "&t=bbc9d347dff7407dbd01c90884f31121"
 )
 
-# Disco externo destino
+# Disco externo destino y respaldo local
 USB_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
+BACKUP_DIR = "/Users/christianvidalwolf/Stock/sellerboard_backups"
 HISTORY_FILE = os.path.join(USB_DIR, "sales_history.csv")
+BACKUP_HISTORY_FILE = os.path.join(BACKUP_DIR, "sales_history.csv")
 
 TODAY = datetime.now().strftime("%Y-%m-%d")
 LOG_MARK = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # Columnas que nos interesan (el resto se descarta para ahorrar espacio)
 KEEP_COLS = [
-    "Date", "Marketplace", "ASIN", "SKU", "Name",
-    "SalesOrganic", "SalesPPC",
-    "UnitsOrganic", "UnitsPPC",
-    "UnitsSponsoredProducts", "UnitsSponsoredDisplay",
+    "Date",
+    "Marketplace",
+    "ASIN",
+    "SKU",
+    "Name",
+    "SalesOrganic",
+    "SalesPPC",
+    "UnitsOrganic",
+    "UnitsPPC",
+    "UnitsSponsoredProducts",
+    "UnitsSponsoredDisplay",
     "Refunds",
-    "GrossProfit", "NetProfit", "Margin",
+    "GrossProfit",
+    "NetProfit",
+    "Margin",
     "Fulfillment Channel",
 ]
 
@@ -64,13 +75,47 @@ def parse_es_number(val):
         return 0.0
 
 
-def ensure_usb():
-    """Verifica que el USB SSD esté montado antes de continuar."""
-    if not os.path.isdir(USB_DIR):
-        raise RuntimeError(
-            f"USB SSD no encontrado en {USB_DIR}. "
-            "Conéctalo antes de ejecutar el script."
-        )
+def ensure_usb(max_wait_seconds=30):
+    """Comprueba si el USB SSD está montado y devuelve True/False."""
+    import time
+
+    for attempt in range(max_wait_seconds + 1):
+        if os.path.isdir(USB_DIR):
+            if attempt > 0:
+                print(f"  → USB SSD detectado después de {attempt} segundos")
+            return True
+        if attempt < max_wait_seconds:
+            time.sleep(1)
+
+    print(
+        f"  → USB SSD no encontrado en {USB_DIR} después de {max_wait_seconds}s. "
+        f"Usando respaldo local en {BACKUP_DIR}."
+    )
+    return False
+
+
+def ensure_backup():
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+
+
+def write_snapshot(df: pd.DataFrame, filename: str):
+    destinations = []
+    if os.path.isdir(USB_DIR):
+        destinations.append(USB_DIR)
+    destinations.append(BACKUP_DIR)
+
+    last_error = None
+    for directory in destinations:
+        try:
+            raw_path = os.path.join(directory, filename)
+            df.to_csv(raw_path, index=False)
+            print(f"  → Raw snapshot saved: {raw_path}")
+            return raw_path
+        except OSError as exc:
+            last_error = exc
+            print(f"  → Could not save raw snapshot to {directory}: {exc}")
+
+    raise last_error or RuntimeError("Could not save SellerBoard raw snapshot.")
 
 
 def download_report():
@@ -82,10 +127,8 @@ def download_report():
     text = resp.content.decode("utf-8-sig")
     df = pd.read_csv(StringIO(text), quotechar='"')
 
-    # Guardar snapshot raw del día en el USB
-    raw_path = os.path.join(USB_DIR, f"sellerboard_ventas_{TODAY}.csv")
-    df.to_csv(raw_path, index=False)
-    print(f"  → Raw snapshot saved: {raw_path}")
+    # Guardar snapshot raw del día en USB o respaldo local
+    write_snapshot(df, f"sellerboard_ventas_{TODAY}.csv")
     print(f"  → {len(df)} rows downloaded, {df['Date'].nunique()} unique dates")
     return df
 
@@ -93,16 +136,33 @@ def download_report():
 def load_history():
     if os.path.exists(HISTORY_FILE):
         return pd.read_csv(HISTORY_FILE)
+    if os.path.exists(BACKUP_HISTORY_FILE):
+        return pd.read_csv(BACKUP_HISTORY_FILE)
     return pd.DataFrame()
 
 
 def save_history(df: pd.DataFrame):
-    df.to_csv(HISTORY_FILE, index=False)
-    print(f"  → History saved: {len(df)} total rows in {HISTORY_FILE}")
+    destinations = []
+    if os.path.isdir(USB_DIR):
+        destinations.append(HISTORY_FILE)
+    destinations.append(BACKUP_HISTORY_FILE)
+
+    last_error = None
+    for path in destinations:
+        try:
+            df.to_csv(path, index=False)
+            print(f"  → History saved: {len(df)} total rows in {path}")
+            return
+        except OSError as exc:
+            last_error = exc
+            print(f"  → Could not save history to {path}: {exc}")
+
+    raise last_error or RuntimeError("Could not save sales history.")
 
 
 def main():
     ensure_usb()
+    ensure_backup()
     raw = download_report()
 
     # Filtrar columnas de interés (solo las que existen en el CSV)
@@ -114,12 +174,21 @@ def main():
         if col in df_new.columns:
             df_new[col] = df_new[col].apply(parse_es_number)
 
-    for col in ["UnitsOrganic", "UnitsPPC", "UnitsSponsoredProducts",
-                "UnitsSponsoredDisplay", "Refunds"]:
+    for col in [
+        "UnitsOrganic",
+        "UnitsPPC",
+        "UnitsSponsoredProducts",
+        "UnitsSponsoredDisplay",
+        "Refunds",
+    ]:
         if col in df_new.columns:
-            df_new[col] = pd.to_numeric(
-                df_new[col].astype(str).str.replace(",", ""), errors="coerce"
-            ).fillna(0).astype(int)
+            df_new[col] = (
+                pd.to_numeric(
+                    df_new[col].astype(str).str.replace(",", ""), errors="coerce"
+                )
+                .fillna(0)
+                .astype(int)
+            )
 
     # Añadir columna de fecha de descarga para trazabilidad
     df_new["downloaded_at"] = LOG_MARK
@@ -141,7 +210,8 @@ def main():
     # Resumen
     total_units = (
         combined["UnitsOrganic"].sum() + combined["UnitsPPC"].sum()
-        if "UnitsOrganic" in combined.columns else 0
+        if "UnitsOrganic" in combined.columns
+        else 0
     )
     days_covered = combined["Date"].nunique() if "Date" in combined.columns else 0
     print(

@@ -4,7 +4,8 @@ from datetime import datetime
 import requests
 
 
-SELLERBOARD_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
+USB_SELLERBOARD_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
+BACKUP_SELLERBOARD_DIR = "/Users/christianvidalwolf/Stock/sellerboard_backups"
 
 REPORTS = [
     (
@@ -26,15 +27,24 @@ HEADERS = {
 
 
 def ensure_destination():
-    if not os.path.isdir(SELLERBOARD_DIR):
-        raise RuntimeError(
-            f"No encuentro la carpeta de SellerBoard: {SELLERBOARD_DIR}. "
-            "Comprueba que el USB SSD este montado."
-        )
+    os.makedirs(BACKUP_SELLERBOARD_DIR, exist_ok=True)
+    if os.path.isdir(USB_SELLERBOARD_DIR):
+        return USB_SELLERBOARD_DIR
+    print(
+        f"USB SSD no disponible en {USB_SELLERBOARD_DIR}. "
+        f"Usando respaldo local en {BACKUP_SELLERBOARD_DIR}."
+    )
+    return BACKUP_SELLERBOARD_DIR
+
+
+def write_snapshot(prefix, date_str, content, destination_dir):
+    output_path = os.path.join(destination_dir, f"{prefix}_{date_str}.csv")
+    with open(output_path, "wb") as f:
+        f.write(content)
+    return output_path
 
 
 def download_report(prefix, url, date_str):
-    output_path = os.path.join(SELLERBOARD_DIR, f"{prefix}_{date_str}.csv")
     print(f"Downloading {prefix}...")
 
     response = requests.get(url, headers=HEADERS, timeout=90)
@@ -44,11 +54,22 @@ def download_report(prefix, url, date_str):
     if not content.strip():
         raise RuntimeError(f"SellerBoard returned an empty file for {prefix}.")
 
-    with open(output_path, "wb") as f:
-        f.write(content)
+    destinations = []
+    if os.path.isdir(USB_SELLERBOARD_DIR):
+        destinations.append(USB_SELLERBOARD_DIR)
+    destinations.append(BACKUP_SELLERBOARD_DIR)
 
-    print(f"Saved {prefix}: {output_path} ({len(content)} bytes)")
-    return output_path
+    last_error = None
+    for destination_dir in destinations:
+        try:
+            output_path = write_snapshot(prefix, date_str, content, destination_dir)
+            print(f"Saved {prefix}: {output_path} ({len(content)} bytes)")
+            return output_path
+        except OSError as exc:
+            last_error = exc
+            print(f"Could not save {prefix} to {destination_dir}: {exc}")
+
+    raise last_error or RuntimeError(f"Could not save SellerBoard snapshot for {prefix}.")
 
 
 def main():

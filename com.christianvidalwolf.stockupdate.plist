@@ -19,8 +19,8 @@
     <key>WorkingDirectory</key>
     <string>/Users/christianvidalwolf/Stock</string>
     <key>StandardOutPath</key>
-    <string>/Users/christianvidalwolf/Stock/cron_update.log</string>
+    <string>/Users/christianvidalwolf/Stock/logs/cron_update.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/christianvidalwolf/Stock/cron_update.log</string>
+    <string>/Users/christianvidalwolf/Stock/logs/cron_update.log</string>
 </dict>
 </plist>

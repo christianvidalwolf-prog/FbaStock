@@ -31,9 +31,13 @@ python3 translate_titles.py
 ### Data Files
 - `fba-replenishment/public/data.json` - Frontend reads this
 - `fba-replenishment/public/` - Static assets served by Vite
-- `/Volumes/USB SSD/ficheros sellerboard/` - Historical data storage
+- `/Volumes/USB SSD/Ficheros sellerboard/` - Primary SellerBoard snapshot storage
+- `/Users/christianvidalwolf/Stock/sellerboard_backups/` - Local fallback for SellerBoard snapshots and history
+- `/Users/christianvidalwolf/Stock/logs/` - Local cron logs
 
-## Historical Data (USB SSD)
+## Historical Data
+
+Primary storage is the USB SSD when it is mounted. If it is unavailable, the scripts fall back to local snapshots in the repo.
 
 The script automatically downloads and saves:
 - **Inventario**: `sellerboard_inventory_YYYY-MM-DD.csv`
@@ -54,8 +58,8 @@ Run `sync_fba_report.py` daily to build the historical record.
 ## Data Pipeline
 
 1. `sync_fba_report.py` fetches from multiple sources:
-   - SellerBoard CSV (FBA inventory) - saved to USB SSD
-   - SellerBoard sales (daily) - saved to USB SSD
+   - SellerBoard CSV (FBA inventory) - saved to USB SSD, fallback to local backup if needed
+   - SellerBoard sales (daily) - saved to USB SSD, fallback to local backup if needed
    - DCASA, Signes, Minerales supplier feeds
 2. Generates `data.json` with products + fbm_recommendations + summary
 3. React app reads `data.json` for all tabs
@@ -64,5 +68,6 @@ Run `sync_fba_report.py` daily to build the historical record.
 
 - Python scripts use system Python3 (`/Library/Developer/CommandLineTools/usr/bin/python3`)
 - Cron job runs daily via `run_stock_update.sh`
+- Cron output lives in `/Users/christianvidalwolf/Stock/logs/` and does not depend on the USB SSD
 - Translation requires: `pip install deep-translator`
 - Tables support column sorting (click header) and filtering (input under header name)

@@ -4,6 +4,7 @@ import time
 import requests
 import json
 import pandas as pd
+import numpy as np
 import re
 import glob
 from deep_translator import GoogleTranslator
@@ -174,7 +175,9 @@ def safe_f(val):
 CSV_URL = "https://app.sellerboard.com/es/automation/reports?id=a1a2f4284b8043c39964edfe3cef86ca&format=csv&t=bbc9d347dff7407dbd01c90884f31121"
 OUTPUT_JSON = "/Users/christianvidalwolf/Stock/fba-replenishment/public/data.json"
 WORK_DIR = "/Users/christianvidalwolf/Stock"
-SELLERBOARD_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
+USB_SELLERBOARD_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
+BACKUP_SELLERBOARD_DIR = os.path.join(WORK_DIR, "sellerboard_backups")
+SELLERBOARD_DIRS = [USB_SELLERBOARD_DIR, BACKUP_SELLERBOARD_DIR]
 
 # Sales data URLs from SellerBoard
 SALES_URL = "https://app.sellerboard.com/es/automation/reports?id=a258a124dd524541be35028b6a172013&format=csv&t=bbc9d347dff7407dbd01c90884f31121"
@@ -419,24 +422,60 @@ def normalize_sku(sku):
 
 
 def find_latest_sales_file(prefix):
-    """Find the most recent sales file in USB SSD."""
-    import glob
-
-    pattern = f"{SELLERBOARD_DIR}/{prefix}_*.csv"
-    files = sorted(glob.glob(pattern), reverse=True)
+    """Find the most recent sales file in any SellerBoard snapshot folder."""
+    files = get_sellerboard_snapshot_files(prefix)
     return files[0] if files else None
 
 
-def get_latest_sellerboard_file(prefix):
-    """Return the most recent SellerBoard snapshot (not just today's)."""
+def get_sellerboard_snapshot_files(prefix):
+    """Return unique SellerBoard snapshots from USB and local backup folders."""
     import glob
 
-    pattern = f"{SELLERBOARD_DIR}/{prefix}_*.csv"
-    files = sorted(glob.glob(pattern), reverse=True)
+    latest_by_name = {}
+    for directory in SELLERBOARD_DIRS:
+        pattern = os.path.join(directory, f"{prefix}_*.csv")
+        for path in glob.glob(pattern):
+            if not os.path.exists(path):
+                continue
+            name = os.path.basename(path)
+            current = latest_by_name.get(name)
+            if current is None or os.path.getmtime(path) > os.path.getmtime(current):
+                latest_by_name[name] = path
+
+    return sorted(
+        latest_by_name.values(), key=lambda f: (os.path.getmtime(f), f), reverse=True
+    )
+
+
+def get_latest_sellerboard_file(prefix):
+    """Return the most recent SellerBoard snapshot from any local folder."""
+    files = get_sellerboard_snapshot_files(prefix)
     for f in files:
         if os.path.exists(f):
             return f
     return None
+
+
+def save_sellerboard_snapshot(prefix, date_str, content):
+    """Write a SellerBoard snapshot to USB first, then fall back to local disk."""
+    os.makedirs(BACKUP_SELLERBOARD_DIR, exist_ok=True)
+    destinations = []
+    if os.path.isdir(USB_SELLERBOARD_DIR):
+        destinations.append(USB_SELLERBOARD_DIR)
+    destinations.append(BACKUP_SELLERBOARD_DIR)
+
+    last_error = None
+    for directory in destinations:
+        try:
+            output_file = os.path.join(directory, f"{prefix}_{date_str}.csv")
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write(content)
+            return output_file
+        except OSError as exc:
+            last_error = exc
+            print(f"Could not save {prefix} to {directory}: {exc}")
+
+    raise last_error or RuntimeError(f"Could not save SellerBoard snapshot for {prefix}.")
 
 
 def read_local_sellerboard_file(path):
@@ -446,29 +485,29 @@ def read_local_sellerboard_file(path):
 
 def get_sellerboard_report(prefix, url):
     """Use local snapshot if < 12h old; otherwise download fresh."""
-    os.makedirs(SELLERBOARD_DIR, exist_ok=True)
+    os.makedirs(BACKUP_SELLERBOARD_DIR, exist_ok=True)
     local_file = get_latest_sellerboard_file(prefix)
     if local_file:
         age_hours = (time.time() - os.path.getmtime(local_file)) / 3600
         if age_hours < 12:
-            print(f"Using local SellerBoard snapshot ({age_hours:.1f}h old): {local_file}")
+            print(
+                f"Using local SellerBoard snapshot ({age_hours:.1f}h old): {local_file}"
+            )
             return read_local_sellerboard_file(local_file), local_file
         print(f"Local snapshot too old ({age_hours:.1f}h). Downloading fresh...")
 
     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d")
-    output_file = f"{SELLERBOARD_DIR}/{prefix}_{timestamp}.csv"
     print(f"Downloading {prefix} from SellerBoard...")
     response = requests.get(url, headers=HEADERS, timeout=60)
     response.raise_for_status()
     text = response.content.decode("utf-8-sig", errors="replace")
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(text)
+    output_file = save_sellerboard_snapshot(prefix, timestamp, text)
     print(f"Saved {prefix} to {output_file}")
     return text, output_file
 
 
 def download_and_save_sales():
-    """Download today's sales from SellerBoard and save to USB SSD."""
+    """Download today's sales from SellerBoard and save to a local snapshot."""
     try:
         _, sales_file = get_sellerboard_report("sellerboard_ventas", SALES_URL)
         return sales_file
@@ -478,14 +517,13 @@ def download_and_save_sales():
 
 
 def get_sales_data():
-    """Build sales history: prioritize Excel files (60 & 365 days), fallback to CSV."""
+    """Build sales history: base from Excel (March+April), add daily CSV files for May."""
     import glob
     from datetime import datetime, timedelta
 
     sales_365 = {}
     sales_60 = {}
 
-    # First: Read Excel files (they have full 60/365 day history)
     if os.path.exists(VENTAS_FILE):
         print(f"Reading {VENTAS_FILE}...")
         try:
@@ -502,50 +540,37 @@ def get_sales_data():
             df = pd.read_excel(VENTAS_60_FILE)
             df["ASIN"] = df["ASIN"].astype(str).str.strip()
             sales_60 = df.groupby("ASIN")["Units"].sum().to_dict()
-            print(f"  60-day sales from Excel: {len(sales_60)} ASINs")
+            print(f"  60-day sales from Excel (base): {len(sales_60)} ASINs")
         except Exception as e:
             print(f"Error reading {VENTAS_60_FILE}: {e}")
 
-    # Second: If no Excel data, try CSV files from USB
-    if not sales_365 and not sales_60:
-        sales_files = sorted(glob.glob(f"{SELLERBOARD_DIR}/sellerboard_ventas_*.csv"))
-        print(f"Found {len(sales_files)} sales files in USB")
+    cutoff_60 = datetime.now() - timedelta(days=60)
+    sales_files = get_sellerboard_snapshot_files("sellerboard_ventas")
+    if sales_files:
+        print(f"Processing {len(sales_files)} daily sales files from local snapshots...")
+        for f in sales_files:
+            try:
+                df = pd.read_csv(f)
+                df["Date"] = pd.to_datetime(
+                    df["Date"], format="%d/%m/%Y", errors="coerce"
+                )
+                df["ASIN"] = df["ASIN"].astype(str).str.strip()
 
-        if sales_files:
-            all_data = []
-            for f in sales_files:
-                try:
-                    date_str = f.split("_")[-1].replace(".csv", "")
-                    file_date = datetime.strptime(date_str, "%Y-%m-%d")
-
-                    df = pd.read_csv(f)
-                    df["Date"] = pd.to_datetime(
-                        df["Date"], format="%d/%m/%Y", errors="coerce"
-                    )
-                    df["ASIN"] = df["ASIN"].astype(str).str.strip()
-                    all_data.append(df)
-                    print(f"  Loaded {f} ({len(df)} rows)")
-                except Exception as e:
-                    print(f"  Error reading {f}: {e}")
-
-            if all_data:
-                combined = pd.concat(all_data, ignore_index=True)
-                unit_cols = [col for col in combined.columns if col.startswith("Units")]
-                combined["TotalUnits"] = (
-                    combined[unit_cols]
-                    .apply(pd.to_numeric, errors="coerce")
-                    .sum(axis=1)
+                unit_cols = [col for col in df.columns if col.startswith("Units")]
+                df["TotalUnits"] = (
+                    df[unit_cols].apply(pd.to_numeric, errors="coerce").sum(axis=1)
                 )
 
-                cutoff_60 = datetime.now() - timedelta(days=60)
-                df_60 = combined[combined["Date"] >= cutoff_60]
-                sales_60 = df_60.groupby("ASIN")["TotalUnits"].sum().to_dict()
-                print(f"Total 60-day ASINs: {len(sales_60)}")
+                df_60 = df[df["Date"] >= cutoff_60]
+                for asin, group in df_60.groupby("ASIN"):
+                    units = group["TotalUnits"].sum()
+                    if units > 0:
+                        sales_60[asin] = sales_60.get(asin, 0) + units
+                print(f"  Added from {os.path.basename(f)}: {len(df_60)} rows")
+            except Exception as e:
+                print(f"  Error reading {f}: {e}")
 
-                cutoff_365 = datetime.now() - timedelta(days=365)
-                df_365 = combined[combined["Date"] >= cutoff_365]
-                sales_365 = df_365.groupby("ASIN")["TotalUnits"].sum().to_dict()
-                print(f"Total 365-day ASINs: {len(sales_365)}")
+    print(f"  Total 60-day sales (Excel + daily): {len(sales_60)} ASINs")
 
     return sales_365, sales_60
 
@@ -754,7 +779,18 @@ def sync():
             "fbm_recommendations": fbm_recommendations,
         }
         with open(OUTPUT_JSON, "w") as f:
-            json.dump(final_data, f, indent=2)
+            json.dump(
+                final_data,
+                f,
+                indent=2,
+                default=lambda x: bool(x)
+                if isinstance(x, (bool, np.bool_))
+                else str(x)
+                if isinstance(x, np.integer)
+                else float(x)
+                if isinstance(x, np.floating)
+                else x,
+            )
         print(
             f"Synced {len(data)} SKUs. FBM Recs: {len(fbm_recommendations)}. Slow Moving: {final_data['summary']['slow_moving_count']}"
         )
