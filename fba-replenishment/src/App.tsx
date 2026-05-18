@@ -52,7 +52,7 @@ interface Data {
   fbm_recommendations?: FBMRecommendation[];
 }
 
-const PROVIDERS = ['All', 'Signes', 'Minerales', 'Dcasa'];
+const PROVIDERS = ['All', 'Signes', 'Minerales', 'Dcasa', 'Trediser'];
 
 const getEffectiveStock = (product: Product) => (
   product.effective_stock ?? (product.stock_amz + product.sent_to_fba + product.reserved)

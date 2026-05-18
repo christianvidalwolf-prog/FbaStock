@@ -395,6 +395,7 @@ def get_provider_and_id(sku):
       CLM            -> DC  (Dcasa: refs de 7 digitos como 2684315)
       SG/SGR/SGRG/SGAZ -> SG  (Signes: refs de 5 digitos como 31442)
       VC/VCT         -> VC  (Minerales)
+      MD/MDFBA/MDRG/MDCFBA -> MD  (Trediser)
     """
     sku = str(sku).upper().strip()
     # Orden: patrones mas especificos primero
@@ -408,6 +409,7 @@ def get_provider_and_id(sku):
         (r"^(\d+)VCFBA", "VC"),
         (r"^(\d+)VCT", "VC"),
         (r"^(\d+)VC", "VC"),
+        (r"^(\d+)(?:[A-Z]*)MD(?:RGFBA|CFBA|FBA|RG)?$", "MD"),
         (r"^(\d+)DC", "DC"),
     ]
     for pattern, prov_key in patterns:
@@ -654,9 +656,12 @@ def sync():
                 continue
 
             prov_key, clean_id = get_provider_and_id(sku)
-            provider_name = {"SG": "Signes", "VC": "Minerales", "DC": "Dcasa"}.get(
-                prov_key, "Unknown"
-            )
+            provider_name = {
+                "SG": "Signes",
+                "VC": "Minerales",
+                "DC": "Dcasa",
+                "MD": "Trediser",
+            }.get(prov_key, "Unknown")
             supp_stock = supplier_stocks.get(prov_key, {}).get(clean_id, 0)
 
             stock_amz = safe_f(row.get("FBA/FBM Stock", "0"))
@@ -767,9 +772,12 @@ def sync():
                     "title": translate_to_spanish(sku_to_title.get(base_sku, "")),
                     "sales_365": int(units or 0),
                     "sales_7": int(sales_7_map.get(asin, 0) or 0),
-                    "provider": {"SG": "Signes", "VC": "Minerales", "DC": "Dcasa"}.get(
-                        prov_key, "Unknown"
-                    ),
+                    "provider": {
+                        "SG": "Signes",
+                        "VC": "Minerales",
+                        "DC": "Dcasa",
+                        "MD": "Trediser",
+                    }.get(prov_key, "Unknown"),
                 }
             )
 
