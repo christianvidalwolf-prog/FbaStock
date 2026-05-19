@@ -4,8 +4,8 @@ download_daily_sales.py
 Descarga el informe de ventas de los últimos 7 días de Sellerboard
 y hace un append al historial de ventas diario (sales_history.csv).
 
-- Guarda un snapshot diario en: /Volumes/USB SSD/Ficheros sellerboard/
-- El historial acumulado también vive en esa carpeta.
+- Guarda un snapshot diario en: /Users/christianvidalwolf/Stock/sellerboard_backups/
+- El historial acumulado vive en esa carpeta local.
 - Si el registro del día ya existe, no se duplica (idempotente).
 - A partir de 60 días de historial, sync_fba_report.py usará este
   fichero en lugar de 'ventas 60 dias.xlsx'.
@@ -27,11 +27,11 @@ REPORT_URL = (
     "&t=bbc9d347dff7407dbd01c90884f31121"
 )
 
-# Disco externo destino y respaldo local
+# Carpeta local principal y copia opcional en el USB SSD
+LOCAL_DIR = "/Users/christianvidalwolf/Stock/sellerboard_backups"
 USB_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
-BACKUP_DIR = "/Users/christianvidalwolf/Stock/sellerboard_backups"
-HISTORY_FILE = os.path.join(USB_DIR, "sales_history.csv")
-BACKUP_HISTORY_FILE = os.path.join(BACKUP_DIR, "sales_history.csv")
+HISTORY_FILE = os.path.join(LOCAL_DIR, "sales_history.csv")
+USB_HISTORY_FILE = os.path.join(USB_DIR, "sales_history.csv")
 
 TODAY = datetime.now().strftime("%Y-%m-%d")
 LOG_MARK = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -75,34 +75,14 @@ def parse_es_number(val):
         return 0.0
 
 
-def ensure_usb(max_wait_seconds=30):
-    """Comprueba si el USB SSD está montado y devuelve True/False."""
-    import time
-
-    for attempt in range(max_wait_seconds + 1):
-        if os.path.isdir(USB_DIR):
-            if attempt > 0:
-                print(f"  → USB SSD detectado después de {attempt} segundos")
-            return True
-        if attempt < max_wait_seconds:
-            time.sleep(1)
-
-    print(
-        f"  → USB SSD no encontrado en {USB_DIR} después de {max_wait_seconds}s. "
-        f"Usando respaldo local en {BACKUP_DIR}."
-    )
-    return False
-
-
-def ensure_backup():
-    os.makedirs(BACKUP_DIR, exist_ok=True)
+def ensure_local():
+    os.makedirs(LOCAL_DIR, exist_ok=True)
 
 
 def write_snapshot(df: pd.DataFrame, filename: str):
-    destinations = []
+    destinations = [LOCAL_DIR]
     if os.path.isdir(USB_DIR):
         destinations.append(USB_DIR)
-    destinations.append(BACKUP_DIR)
 
     last_error = None
     for directory in destinations:
@@ -127,7 +107,7 @@ def download_report():
     text = resp.content.decode("utf-8-sig")
     df = pd.read_csv(StringIO(text), quotechar='"')
 
-    # Guardar snapshot raw del día en USB o respaldo local
+    # Guardar snapshot raw del día en local y, si existe, también en el USB
     write_snapshot(df, f"sellerboard_ventas_{TODAY}.csv")
     print(f"  → {len(df)} rows downloaded, {df['Date'].nunique()} unique dates")
     return df
@@ -136,16 +116,15 @@ def download_report():
 def load_history():
     if os.path.exists(HISTORY_FILE):
         return pd.read_csv(HISTORY_FILE)
-    if os.path.exists(BACKUP_HISTORY_FILE):
-        return pd.read_csv(BACKUP_HISTORY_FILE)
+    if os.path.exists(USB_HISTORY_FILE):
+        return pd.read_csv(USB_HISTORY_FILE)
     return pd.DataFrame()
 
 
 def save_history(df: pd.DataFrame):
-    destinations = []
+    destinations = [HISTORY_FILE]
     if os.path.isdir(USB_DIR):
-        destinations.append(HISTORY_FILE)
-    destinations.append(BACKUP_HISTORY_FILE)
+        destinations.append(USB_HISTORY_FILE)
 
     last_error = None
     for path in destinations:
@@ -161,8 +140,7 @@ def save_history(df: pd.DataFrame):
 
 
 def main():
-    ensure_usb()
-    ensure_backup()
+    ensure_local()
     raw = download_report()
 
     # Filtrar columnas de interés (solo las que existen en el CSV)

@@ -4,8 +4,8 @@ from datetime import datetime
 import requests
 
 
+LOCAL_SELLERBOARD_DIR = "/Users/christianvidalwolf/Stock/sellerboard_backups"
 USB_SELLERBOARD_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
-BACKUP_SELLERBOARD_DIR = "/Users/christianvidalwolf/Stock/sellerboard_backups"
 
 REPORTS = [
     (
@@ -27,14 +27,8 @@ HEADERS = {
 
 
 def ensure_destination():
-    os.makedirs(BACKUP_SELLERBOARD_DIR, exist_ok=True)
-    if os.path.isdir(USB_SELLERBOARD_DIR):
-        return USB_SELLERBOARD_DIR
-    print(
-        f"USB SSD no disponible en {USB_SELLERBOARD_DIR}. "
-        f"Usando respaldo local en {BACKUP_SELLERBOARD_DIR}."
-    )
-    return BACKUP_SELLERBOARD_DIR
+    os.makedirs(LOCAL_SELLERBOARD_DIR, exist_ok=True)
+    return LOCAL_SELLERBOARD_DIR
 
 
 def write_snapshot(prefix, date_str, content, destination_dir):
@@ -54,10 +48,9 @@ def download_report(prefix, url, date_str):
     if not content.strip():
         raise RuntimeError(f"SellerBoard returned an empty file for {prefix}.")
 
-    destinations = []
+    destinations = [LOCAL_SELLERBOARD_DIR]
     if os.path.isdir(USB_SELLERBOARD_DIR):
         destinations.append(USB_SELLERBOARD_DIR)
-    destinations.append(BACKUP_SELLERBOARD_DIR)
 
     last_error = None
     for destination_dir in destinations:

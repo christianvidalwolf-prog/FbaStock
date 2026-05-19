@@ -32,12 +32,12 @@ python3 translate_titles.py
 - `fba-replenishment/public/data.json` - Frontend reads this
 - `fba-replenishment/public/` - Static assets served by Vite
 - `/Volumes/USB SSD/Ficheros sellerboard/` - Primary SellerBoard snapshot storage
-- `/Users/christianvidalwolf/Stock/sellerboard_backups/` - Local fallback for SellerBoard snapshots and history
+- `/Users/christianvidalwolf/Stock/sellerboard_backups/` - Primary local SellerBoard snapshots and history
 - `/Users/christianvidalwolf/Stock/logs/` - Local cron logs
 
 ## Historical Data
 
-Primary storage is the USB SSD when it is mounted. If it is unavailable, the scripts fall back to local snapshots in the repo.
+Primary storage is the local `sellerboard_backups/` folder. If the USB SSD is mounted, the scripts also mirror snapshots there.
 
 The script automatically downloads and saves:
 - **Inventario**: `sellerboard_inventory_YYYY-MM-DD.csv`
@@ -58,8 +58,8 @@ Run `sync_fba_report.py` daily to build the historical record.
 ## Data Pipeline
 
 1. `sync_fba_report.py` fetches from multiple sources:
-   - SellerBoard CSV (FBA inventory) - saved to USB SSD, fallback to local backup if needed
-   - SellerBoard sales (daily) - saved to USB SSD, fallback to local backup if needed
+   - SellerBoard CSV (FBA inventory) - saved to local storage, mirrored to USB if available
+   - SellerBoard sales (daily) - saved to local storage, mirrored to USB if available
    - DCASA, Signes, Minerales supplier feeds
 2. Generates `data.json` with products + fbm_recommendations + summary
 3. React app reads `data.json` for all tabs

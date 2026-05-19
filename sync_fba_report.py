@@ -175,9 +175,9 @@ def safe_f(val):
 CSV_URL = "https://app.sellerboard.com/es/automation/reports?id=a1a2f4284b8043c39964edfe3cef86ca&format=csv&t=bbc9d347dff7407dbd01c90884f31121"
 OUTPUT_JSON = "/Users/christianvidalwolf/Stock/fba-replenishment/public/data.json"
 WORK_DIR = "/Users/christianvidalwolf/Stock"
+LOCAL_SELLERBOARD_DIR = os.path.join(WORK_DIR, "sellerboard_backups")
 USB_SELLERBOARD_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
-BACKUP_SELLERBOARD_DIR = os.path.join(WORK_DIR, "sellerboard_backups")
-SELLERBOARD_DIRS = [USB_SELLERBOARD_DIR, BACKUP_SELLERBOARD_DIR]
+SELLERBOARD_DIRS = [LOCAL_SELLERBOARD_DIR, USB_SELLERBOARD_DIR]
 
 # Sales data URLs from SellerBoard
 SALES_URL = "https://app.sellerboard.com/es/automation/reports?id=a258a124dd524541be35028b6a172013&format=csv&t=bbc9d347dff7407dbd01c90884f31121"
@@ -430,7 +430,7 @@ def find_latest_sales_file(prefix):
 
 
 def get_sellerboard_snapshot_files(prefix):
-    """Return unique SellerBoard snapshots from USB and local backup folders."""
+    """Return unique SellerBoard snapshots from the local folder and USB mirror."""
     import glob
 
     latest_by_name = {}
@@ -459,12 +459,11 @@ def get_latest_sellerboard_file(prefix):
 
 
 def save_sellerboard_snapshot(prefix, date_str, content):
-    """Write a SellerBoard snapshot to USB first, then fall back to local disk."""
-    os.makedirs(BACKUP_SELLERBOARD_DIR, exist_ok=True)
-    destinations = []
+    """Write a SellerBoard snapshot to local disk first, then mirror to USB."""
+    os.makedirs(LOCAL_SELLERBOARD_DIR, exist_ok=True)
+    destinations = [LOCAL_SELLERBOARD_DIR]
     if os.path.isdir(USB_SELLERBOARD_DIR):
         destinations.append(USB_SELLERBOARD_DIR)
-    destinations.append(BACKUP_SELLERBOARD_DIR)
 
     last_error = None
     for directory in destinations:
@@ -487,7 +486,7 @@ def read_local_sellerboard_file(path):
 
 def get_sellerboard_report(prefix, url):
     """Use local snapshot if < 12h old; otherwise download fresh."""
-    os.makedirs(BACKUP_SELLERBOARD_DIR, exist_ok=True)
+    os.makedirs(LOCAL_SELLERBOARD_DIR, exist_ok=True)
     local_file = get_latest_sellerboard_file(prefix)
     if local_file:
         age_hours = (time.time() - os.path.getmtime(local_file)) / 3600
