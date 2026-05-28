@@ -963,13 +963,47 @@ function StockCell({
   sentToFba,
   reserved,
   compact = false,
+  showBreakdown = false,
 }: {
   stock: number;
   sentToFba: number;
   reserved: number;
   compact?: boolean;
+  showBreakdown?: boolean;
 }) {
   const transit = sentToFba;
+  if (showBreakdown) {
+    const fbaPhysical = Math.max(0, stock - transit - reserved);
+    return (
+      <div className="flex flex-col items-center">
+        <span
+          className={
+            compact
+              ? 'text-[12px] font-bold tabular-nums text-on-surface leading-none'
+              : 'text-sm font-bold tabular-nums text-on-surface'
+          }
+        >
+          {stock}
+        </span>
+        {(transit > 0 || reserved > 0) && (
+          <div className="mt-1 flex flex-col items-center gap-0.5 text-[8px] font-semibold text-slate-500/80 leading-none">
+            <span>{fbaPhysical} FBA</span>
+            {transit > 0 && (
+              <span className="text-indigo-600 bg-indigo-50/50 px-0.5 py-0.2 rounded border border-indigo-100/30">
+                +{transit} Env
+              </span>
+            )}
+            {reserved > 0 && (
+              <span className="text-orange-600 bg-orange-50/50 px-0.5 py-0.2 rounded border border-orange-100/30">
+                R{reserved}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center">
       <span
@@ -1115,10 +1149,11 @@ function TableRow({
       {/* Stock AMZ Compacto */}
       <td className="px-1 py-2 text-center">
         <StockCell
-          stock={product.stock_amz}
+          stock={getEffectiveStock(product)}
           sentToFba={product.sent_to_fba}
           reserved={product.reserved}
           compact
+          showBreakdown
         />
       </td>
 

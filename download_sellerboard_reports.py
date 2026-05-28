@@ -1,11 +1,15 @@
 import os
+import glob
 from datetime import datetime
+import time
 
 import requests
 
 
 LOCAL_SELLERBOARD_DIR = "/Users/christianvidalwolf/Stock/sellerboard_backups"
 USB_SELLERBOARD_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
+RETENTION_DAYS = 60
+RETENTION_SECONDS = RETENTION_DAYS * 24 * 60 * 60
 
 REPORTS = [
     (
@@ -38,31 +42,68 @@ def write_snapshot(prefix, date_str, content, destination_dir):
     return output_path
 
 
+def cleanup_old_snapshots():
+    cutoff = time.time() - RETENTION_SECONDS
+    patterns = ["sellerboard_inventory_*.csv", "sellerboard_ventas_*.csv"]
+    for directory in [LOCAL_SELLERBOARD_DIR, USB_SELLERBOARD_DIR]:
+        for pattern in patterns:
+            for path in glob.glob(os.path.join(directory, pattern)):
+                try:
+                    if os.path.getmtime(path) < cutoff:
+                        os.remove(path)
+                        print(f"Deleted old snapshot: {path}")
+                except OSError as exc:
+                    print(f"Could not delete {path}: {exc}")
+
+
 def download_report(prefix, url, date_str):
     print(f"Downloading {prefix}...")
 
-    response = requests.get(url, headers=HEADERS, timeout=90)
-    response.raise_for_status()
-
-    content = response.content
-    if not content.strip():
-        raise RuntimeError(f"SellerBoard returned an empty file for {prefix}.")
-
-    destinations = [LOCAL_SELLERBOARD_DIR]
-    if os.path.isdir(USB_SELLERBOARD_DIR):
-        destinations.append(USB_SELLERBOARD_DIR)
-
-    last_error = None
-    for destination_dir in destinations:
+    max_retries = 5
+    for attempt in range(max_retries):
         try:
-            output_path = write_snapshot(prefix, date_str, content, destination_dir)
-            print(f"Saved {prefix}: {output_path} ({len(content)} bytes)")
-            return output_path
-        except OSError as exc:
-            last_error = exc
-            print(f"Could not save {prefix} to {destination_dir}: {exc}")
+            response = requests.get(url, headers=HEADERS, timeout=90)
+            response.raise_for_status()
 
-    raise last_error or RuntimeError(f"Could not save SellerBoard snapshot for {prefix}.")
+            content = response.content
+            text = content.decode("utf-8-sig", errors="replace")
+
+            # Check if SellerBoard report is ready
+            if "Report not ready" in text or "try again" in text:
+                print(f"  Attempt {attempt+1}/{max_retries}: SellerBoard report not ready yet. Waiting 60s...")
+                time.sleep(60)
+                continue
+
+            if not content.strip():
+                raise RuntimeError(f"SellerBoard returned an empty file for {prefix}.")
+
+            # Validate that this is a valid CSV report by checking for headers
+            if "ASIN" not in text or "SKU" not in text:
+                raise RuntimeError(f"SellerBoard report does not contain expected CSV headers (ASIN, SKU). Preview: {text[:200]}")
+
+            destinations = [LOCAL_SELLERBOARD_DIR]
+            if os.path.isdir(USB_SELLERBOARD_DIR):
+                destinations.append(USB_SELLERBOARD_DIR)
+
+            last_error = None
+            for destination_dir in destinations:
+                try:
+                    output_path = write_snapshot(prefix, date_str, content, destination_dir)
+                    print(f"Saved {prefix}: {output_path} ({len(content)} bytes)")
+                except OSError as exc:
+                    last_error = exc
+                    print(f"Could not save {prefix} to {destination_dir}: {exc}")
+
+            if last_error:
+                raise last_error
+            return output_path
+
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise
+            print(f"  Attempt {attempt+1}/{max_retries} failed: {e}. Retrying in 30s...")
+            time.sleep(30)
+
 
 
 def main():
@@ -73,6 +114,7 @@ def main():
     for prefix, url in REPORTS:
         download_report(prefix, url, date_str)
 
+    cleanup_old_snapshots()
     print("SellerBoard downloads finished.")
 
 
