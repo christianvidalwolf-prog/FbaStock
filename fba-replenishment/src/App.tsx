@@ -77,6 +77,7 @@ function isSlowMovingProduct(product: Product) {
   const sales60 = product.sales_60 ?? 0;
   if (sales7 > 0) return false;
   if (sales60 > 5) return false;
+  if (product.stock_amz < sales60) return false;
 
   return !!product.is_slow_moving || (product.stock_amz > 0 && (sales60 === 0 || product.days_left > 90));
 }
