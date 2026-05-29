@@ -72,6 +72,13 @@ function loadSetFromLocalStorage(key: string) {
   }
 }
 
+function isSlowMovingProduct(product: Product) {
+  const sales7 = product.sales_7 ?? 0;
+  if (sales7 > 0) return false;
+
+  return !!product.is_slow_moving || (product.stock_amz > 0 && (product.sales_60 === 0 || product.days_left > 90));
+}
+
 function App() {
   const [data, setData] = useState<Data | null>(null);
   const [activeProvider, setActiveProvider] = useState<string>('All');
@@ -356,9 +363,7 @@ function App() {
   const filteredSlowMoving = (() => {
     if (!data) return [];
     
-    let filtered = data.products.filter(p => 
-      p.is_slow_moving || (p.stock_amz > 0 && (p.sales_60 === 0 || p.days_left > 90))
-    );
+    let filtered = data.products.filter(isSlowMovingProduct);
     
     // Apply column filters
     if (Object.keys(columnFilters).length > 0) {
@@ -575,7 +580,7 @@ function App() {
           />
           <MetricCard
             label="SLOW MOVING (FBA)"
-            value={data.products.filter(p => p.is_slow_moving).length}
+            value={data.products.filter(isSlowMovingProduct).length}
             subtext="Baja rotación / Liquidación"
             icon="trending_down"
             accent="warning"
