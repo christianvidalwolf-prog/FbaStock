@@ -6,6 +6,7 @@ y hace un append al historial de ventas diario (sales_history.csv).
 
 - Guarda un snapshot diario en: /Users/christianvidalwolf/Stock/sellerboard_backups/
 - El historial acumulado vive en esa carpeta local.
+- Los CSV diarios de SellerBoard se limpian automáticamente a los 60 días.
 - Si el registro del día ya existe, no se duplica (idempotente).
 - A partir de 60 días de historial, sync_fba_report.py usará este
   fichero en lugar de 'ventas 60 dias.xlsx'.
@@ -17,8 +18,10 @@ Ejecutar diariamente a las 9:00 con cron:
 import requests
 import pandas as pd
 import os
+import glob
 from io import StringIO
 from datetime import datetime
+from time import time
 
 # ── Configuración ─────────────────────────────────────────────────────────────
 REPORT_URL = (
@@ -32,6 +35,8 @@ LOCAL_DIR = "/Users/christianvidalwolf/Stock/sellerboard_backups"
 USB_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
 HISTORY_FILE = os.path.join(LOCAL_DIR, "sales_history.csv")
 USB_HISTORY_FILE = os.path.join(USB_DIR, "sales_history.csv")
+RETENTION_DAYS = 60
+RETENTION_SECONDS = RETENTION_DAYS * 24 * 60 * 60
 
 TODAY = datetime.now().strftime("%Y-%m-%d")
 LOG_MARK = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -96,6 +101,20 @@ def write_snapshot(df: pd.DataFrame, filename: str):
             print(f"  → Could not save raw snapshot to {directory}: {exc}")
 
     raise last_error or RuntimeError("Could not save SellerBoard raw snapshot.")
+
+
+def cleanup_old_snapshots():
+    cutoff = time() - RETENTION_SECONDS
+    patterns = ["sellerboard_inventory_*.csv", "sellerboard_ventas_*.csv"]
+    for directory in [LOCAL_DIR, USB_DIR]:
+        for pattern in patterns:
+            for path in glob.glob(os.path.join(directory, pattern)):
+                try:
+                    if os.path.getmtime(path) < cutoff:
+                        os.remove(path)
+                        print(f"  → Deleted old snapshot: {path}")
+                except OSError as exc:
+                    print(f"  → Could not delete {path}: {exc}")
 
 
 def download_report():
@@ -184,6 +203,7 @@ def main():
         )
 
     save_history(combined)
+    cleanup_old_snapshots()
 
     # Resumen
     total_units = (

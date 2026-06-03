@@ -25,6 +25,50 @@ def to_num(val):
     except:
         return 0
 
+
+def load_trediser_stocks(path):
+    df_t = pd.read_excel(path)
+    if "Código" in df_t.columns:
+        df_t = df_t.dropna(subset=["Código"])
+        stocks = {}
+        stock_column = "Unnamed: 3" if "Unnamed: 3" in df_t.columns else df_t.columns[-1]
+        for _, row in df_t.iterrows():
+            code = str(row["Código"]).strip().replace(".0", "")
+            if not code:
+                continue
+            stocks[code] = to_num(row[stock_column])
+        return stocks
+
+    raw_df = pd.read_excel(path, header=None)
+    code_col = None
+    stock_col = None
+    data_start = 0
+
+    for idx, row in raw_df.iterrows():
+        for col_idx, value in enumerate(row.tolist()):
+            value_str = str(value).strip() if pd.notna(value) else ""
+            if value_str == "Código" and code_col is None:
+                code_col = col_idx
+                data_start = max(data_start, idx + 1)
+            elif value_str == "Unidades" and stock_col is None:
+                stock_col = col_idx
+                data_start = max(data_start, idx + 1)
+
+    if code_col is None or stock_col is None:
+        raise KeyError("Could not locate 'Código'/'Unidades' columns in Trediser file")
+
+    stocks = {}
+    for _, row in raw_df.iloc[data_start:].iterrows():
+        code_val = row.iloc[code_col]
+        if pd.isna(code_val):
+            continue
+        code = str(code_val).strip().replace(".0", "")
+        if not code or code.lower() == "código":
+            continue
+        stocks[code] = to_num(row.iloc[stock_col])
+
+    return stocks
+
 def get_latest_dcasa_file():
     local_files = sorted([f for f in os.listdir(WORK_DIR) if f.startswith("DataWeb") and f.endswith(".csv")])
     if not local_files:
@@ -85,13 +129,9 @@ def load_suppliers_data():
     # 4. trEDISER (MD) from Excel — only source for MD stock
     if os.path.exists(STOCK_TREDISER_FILE):
         try:
-            df_t = pd.read_excel(STOCK_TREDISER_FILE)
-            df_t = df_t.dropna(subset=['Código'])
-            for _, row in df_t.iterrows():
-                code = str(row['Código']).strip().replace(".0", "")
+            trediser_stocks = load_trediser_stocks(STOCK_TREDISER_FILE)
+            for code, stock_val in trediser_stocks.items():
                 if not code: continue
-                # Store by numeric code
-                stock_val = to_num(row['Unnamed: 3'])
                 stocks["MD"][code] = stock_val
         except Exception as e:
             print(f"Error loading trEDISER Excel: {e}")

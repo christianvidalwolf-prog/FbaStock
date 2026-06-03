@@ -38,6 +38,7 @@ python3 translate_titles.py
 ## Historical Data
 
 Primary storage is the local `sellerboard_backups/` folder. If the USB SSD is mounted, the scripts also mirror snapshots there.
+Snapshots older than 60 days are cleaned automatically, while `sales_history.csv` keeps the accumulated sales history.
 
 The script automatically downloads and saves:
 - **Inventario**: `sellerboard_inventory_YYYY-MM-DD.csv`
