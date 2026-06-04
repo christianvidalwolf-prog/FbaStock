@@ -729,12 +729,17 @@ def sync():
                 continue
 
             stock_amz = safe_f(row.get("FBA/FBM Stock", "0"))
+            sent_to_fba = safe_f(row.get("Sent  to FBA", "0"))
+            reserved = safe_f(row.get("Reserved", "0"))
+            transit = sent_to_fba + reserved
+            effective_stock = stock_amz + transit
+            
             asin = row.get("ASIN", "").strip().upper()
             if not asin or asin == "NAN":
                 continue
             if asin not in asin_total_stock:
                 asin_total_stock[asin] = 0
-            asin_total_stock[asin] += stock_amz
+            asin_total_stock[asin] += effective_stock
 
         # Crear set de ASINs que ya tienen stock
         asins_with_stock = {

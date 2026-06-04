@@ -182,7 +182,7 @@ function App() {
       'VENTAS 365D': p.sales_365 || 0,
       'VENTAS 60D': p.sales_60 || 0,
       'STOCK FBA+ENV': getEffectiveStock(p),
-      'STOCK FBA': p.stock_amz,
+      'STOCK FBA': getEffectiveStock(p),
       'ROI %': p.roi,
       PROVEEDOR: p.provider
     }));
@@ -221,7 +221,7 @@ function App() {
         'VENTAS 60D': p.sales_60 || 0,
         'VENTAS 365D': p.sales_365 || 0,
         'STOCK FBA+ENV': getEffectiveStock(p),
-        'STOCK FBA': p.stock_amz,
+        'STOCK FBA': getEffectiveStock(p),
         'TRANSITO': p.sent_to_fba,
         'RESERVADO': p.reserved,
         'VELOCIDAD': p.velocity.toFixed(2),
@@ -380,7 +380,7 @@ function App() {
             case 'title': cellValue = p.title; break;
             case 'asin': cellValue = p.asin; break;
             case 'sales_365': cellValue = p.sales_365 || 0; break;
-            case 'stock_amz': cellValue = p.stock_amz; break;
+            case 'stock_amz': cellValue = getEffectiveStock(p); break;
             case 'roi': cellValue = p.roi; break;
             default: cellValue = '';
           }
@@ -404,7 +404,7 @@ function App() {
           case 'title': aVal = a.title; bVal = b.title; break;
           case 'asin': aVal = a.asin; bVal = b.asin; break;
           case 'sales_365': aVal = a.sales_365 || 0; bVal = b.sales_365 || 0; break;
-          case 'stock_amz': aVal = a.stock_amz; bVal = b.stock_amz; break;
+          case 'stock_amz': aVal = getEffectiveStock(a); bVal = getEffectiveStock(b); break;
           case 'roi': aVal = a.roi; bVal = b.roi; break;
           default: return 0;
         }
@@ -828,7 +828,7 @@ function App() {
                         </td>
                         <td className="px-gutter py-4 text-center font-bold">
                           <StockCell
-                            stock={p.stock_amz}
+                            stock={getEffectiveStock(p)}
                             sentToFba={p.sent_to_fba}
                             reserved={p.reserved}
                           />
