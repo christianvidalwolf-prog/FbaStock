@@ -16,6 +16,8 @@ PRECIOS_FILE = f"{WORK_DIR}/precios ES.xlsx"
 STOCK_TREDISER_FILE = f"{WORK_DIR}/STOCK TREDISER.xls"
 SKUS_FORZAR_CERO = {
     "4100VCO",
+    "4122VC0",
+    "4686VC",
     "2450VC",
     "2450VCI",  # ASIN B010TN6SXU
     "11631VC",
@@ -217,6 +219,12 @@ SKUS_FORZAR_CERO = {
     "2861262CLM",
     "41683MDRG",
     "41891MDRG",
+}
+
+SKUS_ELIMINADOS = {
+    "277222CLM",
+    "22473SG",
+    "193SG",
 }
 
 PRECIOS_FIJOS = {
@@ -1455,6 +1463,9 @@ def run_fast_update():
             continue
         seen_skus.add(sku)
 
+        if sku in SKUS_ELIMINADOS:
+            continue
+
         provider = entry["provider"]
         l_id = entry["id"]
 
@@ -1584,6 +1595,9 @@ def run_fast_update():
         if sku in seen_skus:
             continue
         seen_skus.add(sku)
+
+        if sku in SKUS_ELIMINADOS:
+            continue
 
         if sku in SKUS_MANUALES:
             continue

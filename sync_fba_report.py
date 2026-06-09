@@ -167,7 +167,12 @@ def safe_f(val):
     if not val or val == "nan":
         return 0.0
     try:
-        return float(str(val).replace(",", "").strip())
+        clean_val = str(val).replace("\xa0", "").replace(" ", "").strip()
+        if "," in clean_val:
+            if "." in clean_val:
+                clean_val = clean_val.replace(".", "")
+            clean_val = clean_val.replace(",", ".")
+        return float(clean_val)
     except:
         return 0.0
 

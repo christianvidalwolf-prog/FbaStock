@@ -30,7 +30,7 @@ PRECIOS_FIJOS = {
 }
 
 SIGNES_SKUS_FORZAR_CERO = {
-    '11631VC', '1237VC', '1238VC', '1652VC', '1653VC', '1684VC', '1688VC', '1717VC',
+    '4122VC0', '4686VC', '11631VC', '1237VC', '1238VC', '1652VC', '1653VC', '1684VC', '1688VC', '1717VC',
     '1718VC', '180VC', '1832VC', '2025VC', '2027VC', '2180VC', '2181VC', '2210VC',
     '2260VC', '2355VC', '2356VC', '2360VC', '2400VC', '2401VC', '2402VC', '2405VC',
     '2406VC', '2414VC', '2415VC', '2425VC', '2447VC', '2510VC', '2517VC', '2522VC',
@@ -74,6 +74,12 @@ ASINS_FORZAR_CERO = {
     'B01D0MQOJU',
     'B07D9T4G1F',
     'B07D9V2R3J',
+}
+
+SKUS_ELIMINADOS = {
+    "277222CLM",
+    "22473SG",
+    "193SG",
 }
 
 def to_num(val):
@@ -375,7 +381,7 @@ def export_amazon():
                 if any(x is not None for x in row):
                     # Force stock=0 for ASINs in ASINS_FORZAR_CERO (col 0 = ASIN, col 4 = stock)
                     asin = str(row[0]).strip() if row[0] is not None else ''
-                    if asin in ["2915244CLM", "30512912CLM", "2861262CLM", "41683MDRG", "41891MDRG"]:
+                    if asin in ["2915244CLM", "30512912CLM", "2861262CLM", "41683MDRG", "41891MDRG"] or asin in SKUS_ELIMINADOS:
                         continue
                     row = list(row)
                     force_zero = asin in ASINS_FORZAR_CERO or asin.upper() in {s.upper() for s in SIGNES_SKUS_FORZAR_CERO}

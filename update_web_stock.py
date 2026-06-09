@@ -220,6 +220,10 @@ def main():
         print(f"Error reading source file: {e}")
         return
 
+    # Filter out excluded SKUs
+    SKUS_ELIMINADOS = {"277222CLM", "22473SG", "193SG"}
+    df_web = df_web[~df_web[0].astype(str).str.strip().isin(SKUS_ELIMINADOS)]
+
     updated_count = 0
     not_found_count = 0
     
