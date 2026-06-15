@@ -13,6 +13,7 @@ WORK_DIR = '/Users/christianvidalwolf/Stock'
 MASTER_FILE = f'{WORK_DIR}/INICIO PLUS 2023.xlsx'
 SKUS_FORZAR_CERO = ['2450'] # ID for ASIN B010TN6SXU
 PRECIOS_FIJOS = {
+    "2515VCI": 59.0,
     "1016VCI": 10.99,
     "14165VCI": 8.99,
     "40552MD": 22.99,

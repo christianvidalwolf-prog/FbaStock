@@ -180,6 +180,7 @@ def safe_f(val):
 # Configuration
 CSV_URL = "https://app.sellerboard.com/es/automation/reports?id=a1a2f4284b8043c39964edfe3cef86ca&format=csv&t=bbc9d347dff7407dbd01c90884f31121"
 OUTPUT_JSON = "/Users/christianvidalwolf/Stock/fba-replenishment/public/data.json"
+OUTPUT_JSON_DIST = "/Users/christianvidalwolf/Stock/fba-replenishment/dist/data.json"
 WORK_DIR = "/Users/christianvidalwolf/Stock"
 LOCAL_SELLERBOARD_DIR = os.path.join(WORK_DIR, "sellerboard_backups")
 USB_SELLERBOARD_DIR = "/Volumes/USB SSD/Ficheros sellerboard"
@@ -899,19 +900,18 @@ def sync():
             "products": data,
             "fbm_recommendations": fbm_recommendations,
         }
-        with open(OUTPUT_JSON, "w") as f:
-            json.dump(
-                final_data,
-                f,
-                indent=2,
-                default=lambda x: bool(x)
-                if isinstance(x, (bool, np.bool_))
-                else str(x)
-                if isinstance(x, np.integer)
-                else float(x)
-                if isinstance(x, np.floating)
-                else x,
-            )
+        json_serializer = lambda x: (
+            bool(x) if isinstance(x, (bool, np.bool_))
+            else str(x) if isinstance(x, np.integer)
+            else float(x) if isinstance(x, np.floating)
+            else x
+        )
+        output_paths = [OUTPUT_JSON]
+        if os.path.exists(os.path.dirname(OUTPUT_JSON_DIST)):
+            output_paths.append(OUTPUT_JSON_DIST)
+        for out_path in output_paths:
+            with open(out_path, "w") as f:
+                json.dump(final_data, f, indent=2, default=json_serializer)
         print(
             f"Synced {len(data)} SKUs. FBM Recs: {len(fbm_recommendations)}. Slow Moving: {final_data['summary']['slow_moving_count']}"
         )

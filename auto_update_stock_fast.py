@@ -228,6 +228,7 @@ SKUS_ELIMINADOS = {
 }
 
 PRECIOS_FIJOS = {
+    "2515VCI": 59.0,
     "4746VC": 22.0,
     "31612SG": 25.0,
     "3097101CLM": 15.95,
