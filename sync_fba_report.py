@@ -592,9 +592,11 @@ def get_sales_data():
     """Build sales history from Excel plus the accumulated SellerBoard history/snapshot files."""
     from datetime import datetime, timedelta
 
-    sales_365 = {}
-    sales_60 = {}
-    sales_7 = {}
+    sales_365_sku = {}
+    sales_60_sku = {}
+    sales_7_sku = {}
+    sales_365_asin = {}
+    sales_7_asin = {}
 
     cutoff_7 = datetime.now() - timedelta(days=7)
     cutoff_60 = datetime.now() - timedelta(days=60)
@@ -605,14 +607,16 @@ def get_sales_data():
         try:
             df = pd.read_excel(VENTAS_FILE)
             df["ASIN"] = df["ASIN"].astype(str).str.strip().str.upper()
+            df["SKU"] = df["SKU"].astype(str).str.strip().str.upper()
             date_col = next((c for c in df.columns if "date" in c.lower()), None)
             if date_col:
                 df["ParsedDate"] = pd.to_datetime(df[date_col], dayfirst=True, errors="coerce")
                 df_filtered = df[df["ParsedDate"] >= cutoff_365]
             else:
                 df_filtered = df
-            sales_365 = df_filtered.groupby("ASIN")["Units"].sum().to_dict()
-            print(f"  365-day sales from Excel (filtered): {len(sales_365)} ASINs")
+            sales_365_sku = df_filtered.groupby("SKU")["Units"].sum().to_dict()
+            sales_365_asin = df_filtered.groupby("ASIN")["Units"].sum().to_dict()
+            print(f"  365-day sales from Excel (filtered): {len(sales_365_sku)} SKUs")
         except Exception as e:
             print(f"Error reading {VENTAS_FILE}: {e}")
 
@@ -621,14 +625,15 @@ def get_sales_data():
         try:
             df = pd.read_excel(VENTAS_60_FILE)
             df["ASIN"] = df["ASIN"].astype(str).str.strip().str.upper()
+            df["SKU"] = df["SKU"].astype(str).str.strip().str.upper()
             date_col = next((c for c in df.columns if "date" in c.lower()), None)
             if date_col:
                 df["ParsedDate"] = pd.to_datetime(df[date_col], dayfirst=True, errors="coerce")
                 df_filtered = df[df["ParsedDate"] >= cutoff_60]
             else:
                 df_filtered = df
-            sales_60 = df_filtered.groupby("ASIN")["Units"].sum().to_dict()
-            print(f"  60-day sales from Excel (filtered): {len(sales_60)} ASINs")
+            sales_60_sku = df_filtered.groupby("SKU")["Units"].sum().to_dict()
+            print(f"  60-day sales from Excel (filtered): {len(sales_60_sku)} SKUs")
         except Exception as e:
             print(f"Error reading {VENTAS_60_FILE}: {e}")
 
@@ -690,24 +695,36 @@ def get_sales_data():
         df_60 = daily_sales_df[daily_sales_df["Date"] >= cutoff_60]
         df_365 = daily_sales_df[daily_sales_df["Date"] >= cutoff_365]
 
+        # Integrate SKU level sales
+        for sku, group in df_7.groupby("SKU"):
+            units = group["TotalUnits"].sum()
+            if units > 0:
+                sales_7_sku[sku] = sales_7_sku.get(sku, 0) + units
+
+        for sku, group in df_60.groupby("SKU"):
+            units = group["TotalUnits"].sum()
+            if units > 0:
+                sales_60_sku[sku] = sales_60_sku.get(sku, 0) + units
+
+        for sku, group in df_365.groupby("SKU"):
+            units = group["TotalUnits"].sum()
+            if units > 0:
+                sales_365_sku[sku] = sales_365_sku.get(sku, 0) + units
+
+        # Integrate ASIN level sales
         for asin, group in df_7.groupby("ASIN"):
             units = group["TotalUnits"].sum()
             if units > 0:
-                sales_7[asin] = sales_7.get(asin, 0) + units
-
-        for asin, group in df_60.groupby("ASIN"):
-            units = group["TotalUnits"].sum()
-            if units > 0:
-                sales_60[asin] = sales_60.get(asin, 0) + units
+                sales_7_asin[asin] = sales_7_asin.get(asin, 0) + units
 
         for asin, group in df_365.groupby("ASIN"):
             units = group["TotalUnits"].sum()
             if units > 0:
-                sales_365[asin] = sales_365.get(asin, 0) + units
+                sales_365_asin[asin] = sales_365_asin.get(asin, 0) + units
 
-        print(f"  Integrated daily sales: 7-day={len(sales_7)} ASINs, 60-day={len(sales_60)} ASINs, 365-day={len(sales_365)} ASINs")
+        print(f"  Integrated daily sales: 7-day={len(sales_7_sku)} SKUs, 60-day={len(sales_60_sku)} SKUs, 365-day={len(sales_365_sku)} SKUs")
 
-    return sales_365, sales_60, sales_7
+    return sales_365_sku, sales_60_sku, sales_7_sku, sales_365_asin, sales_7_asin
 
 
 def sync():
@@ -717,7 +734,7 @@ def sync():
     today_file = download_and_save_sales()
 
     # Build sales history from all available CSV files
-    sales_365_map, sales_60_map, sales_7_map = get_sales_data()
+    sales_365_sku_map, sales_60_sku_map, sales_7_sku_map, sales_365_asin_map, sales_7_asin_map = get_sales_data()
 
     print(f"Fetching FBA report...")
     try:
@@ -748,7 +765,7 @@ def sync():
 
         # Legacy fallback set (for FBM SKUs not present in the inventory report)
         inventory_fba_skus = {sku for sku in sku_to_asin if "FBA" in sku}
-        sales_fba_skus = {s.upper() for s in sales_365_map if "FBA" in s.upper()}
+        sales_fba_skus = {s.upper() for s in sales_365_sku_map if "FBA" in s.upper()}
         all_fba_skus = sales_fba_skus.union(inventory_fba_skus)
 
         data = []
@@ -830,9 +847,9 @@ def sync():
                     calculated_need = max(amazon_rec, 5)
                 final_rec = min(max(0, calculated_need - transit), supp_stock)
 
-            sales_365 = int(sales_365_map.get(asin, 0) or 0)
-            sales_60 = int(sales_60_map.get(asin, 0) or 0)
-            sales_7 = int(sales_7_map.get(asin, 0) or 0)
+            sales_365 = int(sales_365_sku_map.get(sku, 0) or 0)
+            sales_60 = int(sales_60_sku_map.get(sku, 0) or 0)
+            sales_7 = int(sales_7_sku_map.get(sku, 0) or 0)
 
             is_back_in_stock = (
                 (stock_amz == 0)
@@ -872,7 +889,7 @@ def sync():
 
         # FBM→FBA recommendations: ASINs con ventas pero sin listing FBA todavía
         fbm_recommendations = []
-        for asin, units in sales_365_map.items():
+        for asin, units in sales_365_asin_map.items():
             if units <= 8:
                 continue
             if not asin or asin == "nan":
@@ -901,7 +918,7 @@ def sync():
                     "sku": base_sku,
                     "title": translate_to_spanish(sku_to_title.get(base_sku, "")),
                     "sales_365": int(units or 0),
-                    "sales_7": int(sales_7_map.get(asin, 0) or 0),
+                    "sales_7": int(sales_7_asin_map.get(asin, 0) or 0),
                     "provider": {
                         "SG": "Signes",
                         "VC": "Minerales",
