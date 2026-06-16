@@ -589,20 +589,30 @@ def download_and_save_sales():
 
 
 def get_sales_data():
-    """Build sales history from Excel plus the accumulated SellerBoard history file."""
-    from datetime import datetime
+    """Build sales history from Excel plus the accumulated SellerBoard history/snapshot files."""
+    from datetime import datetime, timedelta
 
     sales_365 = {}
     sales_60 = {}
     sales_7 = {}
 
+    cutoff_7 = datetime.now() - timedelta(days=7)
+    cutoff_60 = datetime.now() - timedelta(days=60)
+    cutoff_365 = datetime.now() - timedelta(days=365)
+
     if os.path.exists(VENTAS_FILE):
         print(f"Reading {VENTAS_FILE}...")
         try:
             df = pd.read_excel(VENTAS_FILE)
-            df["ASIN"] = df["ASIN"].astype(str).str.strip()
-            sales_365 = df.groupby("ASIN")["Units"].sum().to_dict()
-            print(f"  365-day sales from Excel: {len(sales_365)} ASINs")
+            df["ASIN"] = df["ASIN"].astype(str).str.strip().str.upper()
+            date_col = next((c for c in df.columns if "date" in c.lower()), None)
+            if date_col:
+                df["ParsedDate"] = pd.to_datetime(df[date_col], dayfirst=True, errors="coerce")
+                df_filtered = df[df["ParsedDate"] >= cutoff_365]
+            else:
+                df_filtered = df
+            sales_365 = df_filtered.groupby("ASIN")["Units"].sum().to_dict()
+            print(f"  365-day sales from Excel (filtered): {len(sales_365)} ASINs")
         except Exception as e:
             print(f"Error reading {VENTAS_FILE}: {e}")
 
@@ -610,11 +620,20 @@ def get_sales_data():
         print(f"Reading {VENTAS_60_FILE}...")
         try:
             df = pd.read_excel(VENTAS_60_FILE)
-            df["ASIN"] = df["ASIN"].astype(str).str.strip()
-            sales_60 = df.groupby("ASIN")["Units"].sum().to_dict()
-            print(f"  60-day sales from Excel (base): {len(sales_60)} ASINs")
+            df["ASIN"] = df["ASIN"].astype(str).str.strip().str.upper()
+            date_col = next((c for c in df.columns if "date" in c.lower()), None)
+            if date_col:
+                df["ParsedDate"] = pd.to_datetime(df[date_col], dayfirst=True, errors="coerce")
+                df_filtered = df[df["ParsedDate"] >= cutoff_60]
+            else:
+                df_filtered = df
+            sales_60 = df_filtered.groupby("ASIN")["Units"].sum().to_dict()
+            print(f"  60-day sales from Excel (filtered): {len(sales_60)} ASINs")
         except Exception as e:
             print(f"Error reading {VENTAS_60_FILE}: {e}")
+
+    # Build unique daily sales dataframe from history file or snapshot daily files
+    daily_sales_df = pd.DataFrame()
 
     history_df = load_sales_history_file()
     if not history_df.empty:
@@ -623,62 +642,70 @@ def get_sales_data():
             history_df["Date"] = pd.to_datetime(
                 history_df["Date"], dayfirst=True, errors="coerce"
             )
-            history_df["ASIN"] = history_df["ASIN"].astype(str).str.strip()
-            unit_cols = [col for col in history_df.columns if col.startswith("Units")]
-            history_df["TotalUnits"] = (
-                history_df[unit_cols].apply(pd.to_numeric, errors="coerce").sum(axis=1)
-            )
-            cutoff_7 = datetime.now() - timedelta(days=7)
-            cutoff_60 = datetime.now() - timedelta(days=60)
-            df_60 = history_df[history_df["Date"] >= cutoff_60]
-            df_7 = history_df[history_df["Date"] >= cutoff_7]
-            for asin, group in df_60.groupby("ASIN"):
-                units = group["TotalUnits"].sum()
-                if units > 0:
-                    sales_60[asin] = sales_60.get(asin, 0) + units
-            for asin, group in df_7.groupby("ASIN"):
-                units = group["TotalUnits"].sum()
-                if units > 0:
-                    sales_7[asin] = sales_7.get(asin, 0) + units
-            print(f"  Total 60-day sales from history: {len(sales_60)} ASINs")
-            print(f"  Total 7-day sales from history: {len(sales_7)} ASINs")
+            history_df["ASIN"] = history_df["ASIN"].astype(str).str.strip().str.upper()
+            history_df["SKU"] = history_df["SKU"].astype(str).str.strip().str.upper()
+            history_df["Marketplace"] = history_df["Marketplace"].astype(str).str.strip()
+            
+            # Correctly compute TotalUnits as UnitsOrganic + UnitsPPC to avoid ad category double-counting
+            u_org = pd.to_numeric(history_df["UnitsOrganic"], errors="coerce").fillna(0) if "UnitsOrganic" in history_df.columns else 0
+            u_ppc = pd.to_numeric(history_df["UnitsPPC"], errors="coerce").fillna(0) if "UnitsPPC" in history_df.columns else 0
+            history_df["TotalUnits"] = u_org + u_ppc
+            
+            daily_sales_df = history_df[["Date", "Marketplace", "ASIN", "SKU", "TotalUnits"]]
+            print(f"  Loaded {len(daily_sales_df)} daily sales rows from sales_history.csv")
         except Exception as e:
             print(f"Error processing sales history file: {e}")
     else:
-        cutoff_7 = datetime.now() - timedelta(days=7)
-        cutoff_60 = datetime.now() - timedelta(days=60)
         sales_files = get_sellerboard_snapshot_files("sellerboard_ventas")
         if sales_files:
             print(f"Processing {len(sales_files)} daily sales files from local snapshots...")
+            all_dfs = []
             for f in sales_files:
                 try:
                     df = pd.read_csv(f)
                     df["Date"] = pd.to_datetime(
                         df["Date"], format="%d/%m/%Y", errors="coerce"
                     )
-                    df["ASIN"] = df["ASIN"].astype(str).str.strip()
+                    df["ASIN"] = df["ASIN"].astype(str).str.strip().str.upper()
+                    df["SKU"] = df["SKU"].astype(str).str.strip().str.upper()
+                    df["Marketplace"] = df["Marketplace"].astype(str).str.strip()
 
-                    unit_cols = [col for col in df.columns if col.startswith("Units")]
-                    df["TotalUnits"] = (
-                        df[unit_cols].apply(pd.to_numeric, errors="coerce").sum(axis=1)
-                    )
+                    u_org = pd.to_numeric(df["UnitsOrganic"], errors="coerce").fillna(0) if "UnitsOrganic" in df.columns else 0
+                    u_ppc = pd.to_numeric(df["UnitsPPC"], errors="coerce").fillna(0) if "UnitsPPC" in df.columns else 0
+                    df["TotalUnits"] = u_org + u_ppc
 
-                    df_60 = df[df["Date"] >= cutoff_60]
-                    df_7 = df[df["Date"] >= cutoff_7]
-                    for asin, group in df_60.groupby("ASIN"):
-                        units = group["TotalUnits"].sum()
-                        if units > 0:
-                            sales_60[asin] = sales_60.get(asin, 0) + units
-                    for asin, group in df_7.groupby("ASIN"):
-                        units = group["TotalUnits"].sum()
-                        if units > 0:
-                            sales_7[asin] = sales_7.get(asin, 0) + units
-                    print(f"  Added from {os.path.basename(f)}: {len(df_60)} rows")
+                    all_dfs.append(df[["Date", "Marketplace", "ASIN", "SKU", "TotalUnits"]])
                 except Exception as e:
                     print(f"  Error reading {f}: {e}")
+            if all_dfs:
+                combined_df = pd.concat(all_dfs, ignore_index=True)
+                # Deduplicate overlapping daily snapshot entries
+                combined_df.drop_duplicates(subset=["Date", "Marketplace", "SKU"], keep="last", inplace=True)
+                daily_sales_df = combined_df
+                print(f"  Deduplicated snapshots: {len(daily_sales_df)} unique daily records.")
 
-    print(f"  Total 60-day sales (Excel + daily): {len(sales_60)} ASINs")
-    print(f"  Total 7-day sales (daily): {len(sales_7)} ASINs")
+    # Integrate daily sales into the respective maps
+    if not daily_sales_df.empty:
+        df_7 = daily_sales_df[daily_sales_df["Date"] >= cutoff_7]
+        df_60 = daily_sales_df[daily_sales_df["Date"] >= cutoff_60]
+        df_365 = daily_sales_df[daily_sales_df["Date"] >= cutoff_365]
+
+        for asin, group in df_7.groupby("ASIN"):
+            units = group["TotalUnits"].sum()
+            if units > 0:
+                sales_7[asin] = sales_7.get(asin, 0) + units
+
+        for asin, group in df_60.groupby("ASIN"):
+            units = group["TotalUnits"].sum()
+            if units > 0:
+                sales_60[asin] = sales_60.get(asin, 0) + units
+
+        for asin, group in df_365.groupby("ASIN"):
+            units = group["TotalUnits"].sum()
+            if units > 0:
+                sales_365[asin] = sales_365.get(asin, 0) + units
+
+        print(f"  Integrated daily sales: 7-day={len(sales_7)} ASINs, 60-day={len(sales_60)} ASINs, 365-day={len(sales_365)} ASINs")
 
     return sales_365, sales_60, sales_7
 

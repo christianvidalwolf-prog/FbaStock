@@ -232,6 +232,12 @@ def main():
         if sku == "nan" or not sku:
             continue
             
+        # Always set stock to 0 for SKU 3370VC
+        if sku.upper().strip() == "3370VC":
+            df_web.at[idx, 1] = 0.0
+            updated_count += 1
+            continue
+            
         prov, clean_id = get_provider_and_id(sku)
         
         if prov and clean_id:
