@@ -20,6 +20,7 @@ interface Product {
   provider: string;
   status: 'critical' | 'warning' | 'ok';
   sales_7?: number;
+  sales_30?: number;
   sales_365?: number;
   sales_60?: number;
   is_back_in_stock?: boolean;
@@ -179,8 +180,9 @@ function App() {
       ASIN: p.asin,
       TITULO: p.title,
       'VENTAS 7D': p.sales_7 || 0,
-      'VENTAS 365D': p.sales_365 || 0,
+      'VENTAS 30D': p.sales_30 || 0,
       'VENTAS 60D': p.sales_60 || 0,
+      'VENTAS 365D': p.sales_365 || 0,
       'STOCK FBA+ENV': getEffectiveStock(p),
       'STOCK FBA': getEffectiveStock(p),
       'ROI %': p.roi,
@@ -218,6 +220,7 @@ function App() {
         ASIN: p.asin,
         TITULO: p.title,
         'VENTAS 7D': p.sales_7 || 0,
+        'VENTAS 30D': p.sales_30 || 0,
         'VENTAS 60D': p.sales_60 || 0,
         'VENTAS 365D': p.sales_365 || 0,
         'STOCK FBA+ENV': getEffectiveStock(p),
@@ -660,7 +663,7 @@ function App() {
                     <thead>
                       <tr className="bg-surface-container-low border-b border-outline-variant">
                         <TableHeaderSortable column="sku" label="PRODUCTO" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
-                        <TableHeaderSortable column="sales_60" label="VENTAS" sublabel="7d/60d/365d" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
+                        <TableHeaderSortable column="sales_60" label="VENTAS" sublabel="7d/30d/60d/365d" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
                         <TableHeaderSortable column="stock_amz" label="STOCK" sublabel="FBA+Env" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
                         <TableHeaderSortable column="velocity" label="COBER" sublabel="Días/Vel" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
                         <TableHeaderSortable column="supp_stock" label="PROV" sublabel="Stock" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
@@ -804,7 +807,7 @@ function App() {
                   <thead>
                     <tr className="border-b border-outline-variant bg-surface-container-low/50">
                       <TableHeaderSortable column="sku" label="PRODUCTO" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
-                      <TableHeaderSortable column="sales_60" label="VENTAS" sublabel="7d/60d/365d" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
+                      <TableHeaderSortable column="sales_60" label="VENTAS" sublabel="7d/30d/60d/365d" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
                       <TableHeaderSortable column="stock_amz" label="STOCK FBA" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
                       <TableHeaderSortable column="roi" label="ROI" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
                       <th className="px-gutter py-4 text-center text-label-caps text-on-surface-variant font-black">ACCIÓN</th>
@@ -822,6 +825,7 @@ function App() {
                         <td className="px-gutter py-4 text-center">
                           <SalesCell
                             sales7={p.sales_7}
+                            sales30={p.sales_30}
                             sales60={p.sales_60}
                             sales365={p.sales_365}
                           />
@@ -1053,8 +1057,9 @@ function StockCell({
   );
 }
 
-function SalesCell({ sales7, sales60, sales365, compact = false }: {
+function SalesCell({ sales7, sales30, sales60, sales365, compact = false }: {
   sales7?: number;
+  sales30?: number;
   sales60?: number;
   sales365?: number;
   compact?: boolean;
@@ -1063,6 +1068,9 @@ function SalesCell({ sales7, sales60, sales365, compact = false }: {
     <div className="flex flex-col items-center gap-0.5">
       <span className={`font-black tabular-nums leading-none ${compact ? 'text-[12px] text-indigo-600' : 'text-sm text-indigo-600'}`}>
         7d {sales7 || 0}
+      </span>
+      <span className={`tabular-nums leading-none ${compact ? 'text-[10px] text-emerald-700' : 'text-xs text-emerald-700'}`}>
+        30d {sales30 || 0}
       </span>
       <span className={`tabular-nums leading-none ${compact ? 'text-[10px] text-slate-700' : 'text-xs text-slate-700'}`}>
         60d {sales60 || 0}
@@ -1144,6 +1152,9 @@ function TableRow({
         <div className="flex flex-col gap-0.5">
           <span className="text-[12px] font-black tabular-nums text-indigo-600 leading-none">
             7d {product.sales_7 || 0}
+          </span>
+          <span className="text-[10px] tabular-nums text-emerald-700 leading-none">
+            30d {product.sales_30 || 0}
           </span>
           <span className="text-[10px] tabular-nums text-slate-700 leading-none">
             60d {product.sales_60 || 0}

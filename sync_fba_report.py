@@ -594,11 +594,13 @@ def get_sales_data():
 
     sales_365_sku = {}
     sales_60_sku = {}
+    sales_30_sku = {}
     sales_7_sku = {}
     sales_365_asin = {}
     sales_7_asin = {}
 
     cutoff_7 = datetime.now() - timedelta(days=7)
+    cutoff_30 = datetime.now() - timedelta(days=30)
     cutoff_60 = datetime.now() - timedelta(days=60)
     cutoff_365 = datetime.now() - timedelta(days=365)
 
@@ -692,6 +694,7 @@ def get_sales_data():
     # Integrate daily sales into the respective maps
     if not daily_sales_df.empty:
         df_7 = daily_sales_df[daily_sales_df["Date"] >= cutoff_7]
+        df_30 = daily_sales_df[daily_sales_df["Date"] >= cutoff_30]
         df_60 = daily_sales_df[daily_sales_df["Date"] >= cutoff_60]
         df_365 = daily_sales_df[daily_sales_df["Date"] >= cutoff_365]
 
@@ -700,6 +703,11 @@ def get_sales_data():
             units = group["TotalUnits"].sum()
             if units > 0:
                 sales_7_sku[sku] = sales_7_sku.get(sku, 0) + units
+
+        for sku, group in df_30.groupby("SKU"):
+            units = group["TotalUnits"].sum()
+            if units > 0:
+                sales_30_sku[sku] = sales_30_sku.get(sku, 0) + units
 
         for sku, group in df_60.groupby("SKU"):
             units = group["TotalUnits"].sum()
@@ -722,9 +730,9 @@ def get_sales_data():
             if units > 0:
                 sales_365_asin[asin] = sales_365_asin.get(asin, 0) + units
 
-        print(f"  Integrated daily sales: 7-day={len(sales_7_sku)} SKUs, 60-day={len(sales_60_sku)} SKUs, 365-day={len(sales_365_sku)} SKUs")
+        print(f"  Integrated daily sales: 7-day={len(sales_7_sku)} SKUs, 30-day={len(sales_30_sku)} SKUs, 60-day={len(sales_60_sku)} SKUs, 365-day={len(sales_365_sku)} SKUs")
 
-    return sales_365_sku, sales_60_sku, sales_7_sku, sales_365_asin, sales_7_asin
+    return sales_365_sku, sales_60_sku, sales_30_sku, sales_7_sku, sales_365_asin, sales_7_asin
 
 
 def sync():
@@ -734,7 +742,7 @@ def sync():
     today_file = download_and_save_sales()
 
     # Build sales history from all available CSV files
-    sales_365_sku_map, sales_60_sku_map, sales_7_sku_map, sales_365_asin_map, sales_7_asin_map = get_sales_data()
+    sales_365_sku_map, sales_60_sku_map, sales_30_sku_map, sales_7_sku_map, sales_365_asin_map, sales_7_asin_map = get_sales_data()
 
     print(f"Fetching FBA report...")
     try:
@@ -797,7 +805,7 @@ def sync():
         }
 
         # Segunda pasada: generar datos
-        for row in rows:
+        for idx, row in enumerate(rows):
             sku = row.get("SKU", "").upper()
             if not sku.endswith("FBA"):
                 continue
@@ -849,6 +857,7 @@ def sync():
 
             sales_365 = int(sales_365_sku_map.get(sku, 0) or 0)
             sales_60 = int(sales_60_sku_map.get(sku, 0) or 0)
+            sales_30 = int(sales_30_sku_map.get(sku, 0) or 0)
             sales_7 = int(sales_7_sku_map.get(sku, 0) or 0)
 
             is_back_in_stock = (
@@ -881,6 +890,7 @@ def sync():
                     else ("warning" if days_left <= 15 else "ok"),
                     "sales_365": sales_365,
                     "sales_60": sales_60,
+                    "sales_30": sales_30,
                     "sales_7": sales_7,
                     "is_back_in_stock": is_back_in_stock,
                     "is_slow_moving": is_slow_moving,
