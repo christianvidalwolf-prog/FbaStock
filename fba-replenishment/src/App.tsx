@@ -101,6 +101,31 @@ function App() {
   // Excluded SKUs (No restock)
   const [excludedSkus, setExcludedSkus] = useState<Set<string>>(() => loadSetFromLocalStorage('excluded_skus'));
   
+  // Exclusion notes
+  const [excludedNotes, setExcludedNotes] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('excluded_notes');
+    if (!saved) return {};
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error('Error loading excluded_notes', e);
+      return {};
+    }
+  });
+
+  const updateExcludedNote = (sku: string, note: string) => {
+    setExcludedNotes(prev => {
+      const next = { ...prev };
+      if (note.trim()) {
+        next[sku] = note.trim();
+      } else {
+        delete next[sku];
+      }
+      localStorage.setItem('excluded_notes', JSON.stringify(next));
+      return next;
+    });
+  };
+
   // Discarded recommendations
   const [discardedRecommendations, setDiscardedRecommendations] = useState<Set<string>>(() => loadSetFromLocalStorage('discarded_recommendations'));
 
@@ -680,6 +705,8 @@ function App() {
                             index={idx} 
                             isExcluded={excludedSkus.has(p.sku)}
                             onToggleExclude={() => toggleExclude(p.sku)}
+                            note={excludedNotes[p.sku] || ''}
+                            onUpdateNote={(note) => updateExcludedNote(p.sku, note)}
                           />
                         ))}
                       </AnimatePresence>
@@ -1088,16 +1115,42 @@ function TableRow({
   product, 
   index, 
   isExcluded, 
-  onToggleExclude 
+  onToggleExclude,
+  note,
+  onUpdateNote,
 }: { 
   product: Product; 
   index: number;
   isExcluded: boolean;
   onToggleExclude: () => void;
+  note: string;
+  onUpdateNote: (note: string) => void;
 }) {
   const isCritical = product.days_left < 7;
   const isWarning = product.days_left >= 7 && product.days_left < 15;
   const outOfStock = product.final_rec > 0 && product.supp_stock === 0;
+  const [editingNote, setEditingNote] = useState(false);
+  const [draftNote, setDraftNote] = useState(note);
+
+  const startEditing = () => {
+    setDraftNote(note);
+    setEditingNote(true);
+  };
+
+  const saveNote = () => {
+    onUpdateNote(draftNote);
+    setEditingNote(false);
+  };
+
+  const handleNoteKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveNote();
+    }
+    if (e.key === 'Escape') {
+      setDraftNote(note);
+      setEditingNote(false);
+    }
+  };
 
   return (
     <motion.tr
@@ -1143,6 +1196,31 @@ function TableRow({
               </p>
             </div>
             <span className="text-[10px] text-on-surface-variant block leading-tight opacity-70 whitespace-normal">{product.title}</span>
+            {isExcluded && (
+              <div className="mt-1">
+                {editingNote ? (
+                  <input
+                    type="text"
+                    value={draftNote}
+                    onChange={e => setDraftNote(e.target.value)}
+                    onBlur={saveNote}
+                    onKeyDown={handleNoteKeyDown}
+                    autoFocus
+                    placeholder="Motivo de exclusión..."
+                    className="w-full text-[10px] bg-white border border-amber-200 rounded-md py-1 px-2 text-amber-800 placeholder:text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-300"
+                    onClick={e => e.stopPropagation()}
+                  />
+                ) : (
+                  <button
+                    onClick={e => { e.stopPropagation(); startEditing(); }}
+                    className="text-[10px] text-left w-full flex items-center gap-1 text-amber-600 hover:text-amber-700 transition-colors leading-tight"
+                  >
+                    <span className="material-symbols-outlined text-[10px]">edit_note</span>
+                    {note || 'Añadir motivo...'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </td>
