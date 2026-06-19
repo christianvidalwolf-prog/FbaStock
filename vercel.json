@@ -1,5 +1,5 @@
 {
   "buildCommand": "cd fba-replenishment && npm install && npm run build",
   "outputDirectory": "fba-replenishment/dist",
-  "installCommand": "echo 'skip'"
+  "installCommand": "npm install"
 }

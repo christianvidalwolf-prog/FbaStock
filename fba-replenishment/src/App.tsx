@@ -100,41 +100,63 @@ function App() {
   
   // Excluded SKUs (No restock)
   const [excludedSkus, setExcludedSkus] = useState<Set<string>>(() => loadSetFromLocalStorage('excluded_skus'));
-  
+
   // Exclusion notes
   const [excludedNotes, setExcludedNotes] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem('excluded_notes');
     if (!saved) return {};
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading excluded_notes', e);
-      return {};
-    }
+    try { return JSON.parse(saved); } catch { return {}; }
   });
+
+  // Discarded recommendations
+  const [discardedRecommendations, setDiscardedRecommendations] = useState<Set<string>>(() => loadSetFromLocalStorage('discarded_recommendations'));
+
+  // Load prefs from API on mount (overrides localStorage with cloud data)
+  useEffect(() => {
+    fetch('/api/prefs')
+      .then(r => r.ok ? r.json() : null)
+      .then(prefs => {
+        if (!prefs) return;
+        if (prefs.notes) {
+          setExcludedNotes(prefs.notes);
+          localStorage.setItem('excluded_notes', JSON.stringify(prefs.notes));
+        }
+        if (prefs.excluded) {
+          const s = new Set<string>(prefs.excluded);
+          setExcludedSkus(s);
+          localStorage.setItem('excluded_skus', JSON.stringify(prefs.excluded));
+        }
+      })
+      .catch(() => { /* use localStorage fallback */ });
+  }, []);
+
+  const syncPrefs = (notes: Record<string, string>, excluded: string[]) => {
+    fetch('/api/prefs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes, excluded }),
+    }).catch(() => { /* silent fail, localStorage already updated */ });
+  };
 
   const updateExcludedNote = (sku: string, note: string) => {
     setExcludedNotes(prev => {
       const next = { ...prev };
-      if (note.trim()) {
-        next[sku] = note.trim();
-      } else {
-        delete next[sku];
-      }
+      if (note.trim()) next[sku] = note.trim();
+      else delete next[sku];
       localStorage.setItem('excluded_notes', JSON.stringify(next));
+      syncPrefs(next, Array.from(excludedSkus));
       return next;
     });
   };
-
-  // Discarded recommendations
-  const [discardedRecommendations, setDiscardedRecommendations] = useState<Set<string>>(() => loadSetFromLocalStorage('discarded_recommendations'));
 
   const toggleExclude = (sku: string) => {
     setExcludedSkus(prev => {
       const next = new Set(prev);
       if (next.has(sku)) next.delete(sku);
       else next.add(sku);
-      localStorage.setItem('excluded_skus', JSON.stringify(Array.from(next)));
+      const arr = Array.from(next);
+      localStorage.setItem('excluded_skus', JSON.stringify(arr));
+      syncPrefs(excludedNotes, arr);
       return next;
     });
   };
