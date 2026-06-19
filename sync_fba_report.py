@@ -961,6 +961,30 @@ def sync():
         )
         cleanup_old_sellerboard_snapshots()
 
+        # Auto-commit and push data.json so Vercel redeploys with fresh data
+        import subprocess
+        from datetime import date
+        repo_root = os.path.dirname(os.path.abspath(__file__))
+        today = date.today().isoformat()
+        try:
+            subprocess.run(["git", "add", OUTPUT_JSON], cwd=repo_root, check=True)
+            result = subprocess.run(
+                ["git", "diff", "--cached", "--quiet"],
+                cwd=repo_root,
+            )
+            if result.returncode != 0:  # there are staged changes
+                subprocess.run(
+                    ["git", "commit", "-m", f"data: auto-sync FBA data {today}"],
+                    cwd=repo_root,
+                    check=True,
+                )
+                subprocess.run(["git", "push", "origin", "main"], cwd=repo_root, check=True)
+                print(f"Git: committed and pushed data.json ({today})")
+            else:
+                print("Git: data.json unchanged, no commit needed")
+        except subprocess.CalledProcessError as git_err:
+            print(f"Git push failed (data still saved locally): {git_err}")
+
     except Exception as e:
         print(f"Error: {e}")
 
