@@ -961,10 +961,11 @@ def sync():
         )
         cleanup_old_sellerboard_snapshots()
 
-        # Auto-commit and push data.json so Vercel redeploys with fresh data
+        # Auto-commit, push, and deploy so Vercel always serves fresh data
         import subprocess
         from datetime import date
         repo_root = os.path.dirname(os.path.abspath(__file__))
+        fba_dir = os.path.dirname(OUTPUT_JSON)  # fba-replenishment/
         today = date.today().isoformat()
         try:
             subprocess.run(["git", "add", OUTPUT_JSON], cwd=repo_root, check=True)
@@ -984,6 +985,23 @@ def sync():
                 print("Git: data.json unchanged, no commit needed")
         except subprocess.CalledProcessError as git_err:
             print(f"Git push failed (data still saved locally): {git_err}")
+
+        # Deploy to Vercel directly (bypasses GitHub webhook)
+        try:
+            vercel_bin = subprocess.run(["which", "vercel"], capture_output=True, text=True).stdout.strip()
+            if vercel_bin:
+                subprocess.run(
+                    [vercel_bin, "deploy", "--prod", "--yes",
+                     "--scope", "christians-projects-dd62b5fc"],
+                    cwd=fba_dir,
+                    check=True,
+                    timeout=120,
+                )
+                print("Vercel: deployed to production")
+            else:
+                print("Vercel: CLI not found, skipping deploy")
+        except Exception as vercel_err:
+            print(f"Vercel deploy failed (data still in git): {vercel_err}")
 
     except Exception as e:
         print(f"Error: {e}")
