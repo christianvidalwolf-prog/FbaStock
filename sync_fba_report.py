@@ -1003,7 +1003,7 @@ def sync():
                 subprocess.run(
                     [vercel_bin, "deploy", "--prod", "--yes",
                      "--scope", "christians-projects-dd62b5fc"],
-                    cwd=fba_dir,
+                    cwd=repo_root,
                     check=True,
                     timeout=120,
                 )
