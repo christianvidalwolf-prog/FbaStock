@@ -1,6 +1,8 @@
 import csv
 import os
+import sys
 import time
+import fcntl
 import requests
 import json
 import pandas as pd
@@ -8,6 +10,15 @@ import numpy as np
 import re
 import glob
 from deep_translator import GoogleTranslator
+
+# Prevent duplicate concurrent runs (two LaunchAgents fire at same time)
+_LOCK_FILE = "/tmp/sync_fba_report.lock"
+_lock_fd = open(_LOCK_FILE, "w")
+try:
+    fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    print("Another instance is already running. Exiting.")
+    sys.exit(0)
 from datetime import timedelta
 
 # Cache para traducciones (evitar traduzir el mismo título múltiples veces)
@@ -997,21 +1008,33 @@ def sync():
             print(f"Git push failed (data still saved locally): {git_err}")
 
         # Deploy to Vercel directly (bypasses GitHub webhook)
+        # Retry up to 3 times — network may not be ready at 7AM Mac wakeup
         try:
             vercel_bin = subprocess.run(["which", "vercel"], capture_output=True, text=True).stdout.strip()
-            if vercel_bin:
-                subprocess.run(
-                    [vercel_bin, "deploy", "--prod", "--yes",
-                     "--scope", "christians-projects-dd62b5fc"],
-                    cwd=repo_root,
-                    check=True,
-                    timeout=120,
-                )
-                print("Vercel: deployed to production")
-            else:
+            if not vercel_bin:
                 print("Vercel: CLI not found, skipping deploy")
+            else:
+                deployed = False
+                for attempt in range(1, 4):
+                    try:
+                        subprocess.run(
+                            [vercel_bin, "deploy", "--prod", "--yes",
+                             "--scope", "christians-projects-dd62b5fc"],
+                            cwd=repo_root,
+                            check=True,
+                            timeout=120,
+                        )
+                        print(f"Vercel: deployed to production (attempt {attempt})")
+                        deployed = True
+                        break
+                    except Exception as e:
+                        print(f"Vercel deploy attempt {attempt}/3 failed: {e}")
+                        if attempt < 3:
+                            time.sleep(30)  # wait 30s for network to stabilize
+                if not deployed:
+                    print("Vercel deploy failed after 3 attempts (data still in git)")
         except Exception as vercel_err:
-            print(f"Vercel deploy failed (data still in git): {vercel_err}")
+            print(f"Vercel deploy error: {vercel_err}")
 
     except Exception as e:
         print(f"Error: {e}")
