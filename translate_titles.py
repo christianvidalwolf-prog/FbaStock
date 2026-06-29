@@ -2,7 +2,11 @@
 """Translate titles in data.json to Spanish."""
 
 import json
+import os
 import time
+
+os.environ.setdefault("ENABLE_TITLE_TRANSLATION", "1")
+
 from sync_fba_report import translate_to_spanish, is_likely_spanish
 
 DATA_FILE = "/Users/christianvidalwolf/Stock/fba-replenishment/public/data.json"

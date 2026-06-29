@@ -3,26 +3,181 @@ import os
 import sys
 import time
 import fcntl
+import signal
+import subprocess
 import requests
 import json
 import pandas as pd
 import numpy as np
 import re
 import glob
+from datetime import datetime, timedelta
 from deep_translator import GoogleTranslator
 
 # Prevent duplicate concurrent runs (two LaunchAgents fire at same time)
 _LOCK_FILE = "/tmp/sync_fba_report.lock"
-_lock_fd = open(_LOCK_FILE, "w")
-try:
-    fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-except BlockingIOError:
-    print("Another instance is already running. Exiting.")
-    sys.exit(0)
-from datetime import timedelta
+_LOCK_MAX_RUNTIME_SECONDS = 6 * 60 * 60
+
+
+def _process_command(pid):
+    try:
+        result = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "command="],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.stdout.strip()
+    except Exception:
+        return ""
+
+
+def _process_age_seconds(pid):
+    try:
+        result = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "etimes="],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return int(result.stdout.strip())
+    except Exception:
+        pass
+
+    try:
+        result = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "lstart="],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return 0
+        started_text = " ".join(result.stdout.split())
+        started = datetime.strptime(started_text, "%a %b %d %H:%M:%S %Y")
+        return max(0, int((datetime.now() - started).total_seconds()))
+    except Exception:
+        return 0
+
+
+def _lock_holder_pids():
+    try:
+        result = subprocess.run(
+            ["lsof", "-t", _LOCK_FILE],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except Exception:
+        return []
+
+    pids = []
+    for value in result.stdout.splitlines():
+        try:
+            pid = int(value.strip())
+        except ValueError:
+            continue
+        if pid != os.getpid():
+            pids.append(pid)
+    return pids
+
+
+def _is_our_stale_sync(pid):
+    command = _process_command(pid)
+    age = _process_age_seconds(pid)
+    return "sync_fba_report.py" in command and age > _LOCK_MAX_RUNTIME_SECONDS
+
+
+def _terminate_stale_holders():
+    stale_pids = [pid for pid in _lock_holder_pids() if _is_our_stale_sync(pid)]
+    if not stale_pids:
+        return False
+
+    for pid in stale_pids:
+        print(
+            f"Stale sync_fba_report.py process detected (pid {pid}, "
+            f"age {_process_age_seconds(pid)}s). Terminating it."
+        )
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        if not any(_process_command(pid) for pid in stale_pids):
+            return True
+        time.sleep(0.5)
+
+    for pid in stale_pids:
+        if _process_command(pid):
+            print(f"Stale process {pid} did not stop after SIGTERM. Killing it.")
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+    time.sleep(1)
+    return True
+
+
+def _acquire_lock():
+    os.makedirs(os.path.dirname(_LOCK_FILE), exist_ok=True)
+    lock_fd = open(_LOCK_FILE, "a+")
+    for attempt in range(2):
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            lock_fd.seek(0)
+            lock_fd.truncate()
+            lock_fd.write(f"pid={os.getpid()}\nstarted_at={time.time()}\n")
+            lock_fd.flush()
+            return lock_fd
+        except BlockingIOError:
+            if attempt == 0 and _terminate_stale_holders():
+                continue
+            holders = ", ".join(
+                f"{pid} ({_process_age_seconds(pid)}s)" for pid in _lock_holder_pids()
+            )
+            print(f"Another instance is already running. Exiting. Holders: {holders}")
+            sys.exit(0)
+    return lock_fd
+
+
+_lock_fd = _acquire_lock()
 
 # Cache para traducciones (evitar traduzir el mismo título múltiples veces)
 _title_cache = {}
+_TRANSLATION_TIMEOUT_SECONDS = 10
+_ONLINE_TRANSLATION_ENABLED = os.environ.get("ENABLE_TITLE_TRANSLATION") == "1"
+_translation_disabled_logged = False
+
+
+class TranslationTimeout(Exception):
+    pass
+
+
+def _translation_timeout_handler(signum, frame):
+    raise TranslationTimeout()
+
+
+def _translate_with_timeout(title):
+    old_handler = signal.getsignal(signal.SIGALRM)
+    original_requests_get = requests.get
+
+    def requests_get_with_timeout(*args, **kwargs):
+        kwargs.setdefault("timeout", _TRANSLATION_TIMEOUT_SECONDS)
+        return original_requests_get(*args, **kwargs)
+
+    requests.get = requests_get_with_timeout
+    signal.signal(signal.SIGALRM, _translation_timeout_handler)
+    signal.alarm(_TRANSLATION_TIMEOUT_SECONDS)
+    try:
+        return GoogleTranslator(source="auto", target="es").translate(title)
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
+        requests.get = original_requests_get
 
 # Palabras comunes en otros idiomas que indican que no está en español
 _NON_SPANISH_WORDS = {
@@ -135,6 +290,8 @@ def is_likely_spanish(title):
 
 def translate_to_spanish(title):
     """Traduce el título al español solo si no parece estar en español."""
+    global _translation_disabled_logged
+
     if not title or len(title) < 10:
         return title
 
@@ -146,28 +303,23 @@ def translate_to_spanish(title):
     if is_likely_spanish(title):
         return title
 
+    if not _ONLINE_TRANSLATION_ENABLED:
+        if not _translation_disabled_logged:
+            print(
+                "Online title translation disabled during sync "
+                "(set ENABLE_TITLE_TRANSLATION=1 to enable)."
+            )
+            _translation_disabled_logged = True
+        return title
+
     # Solo traducir si no parece español
     try:
-        translated = GoogleTranslator(source="auto", target="es").translate(title)
+        translated = _translate_with_timeout(title)
         if translated and translated != title:
             _title_cache[title] = translated
             return translated
-    except Exception as e:
-        pass
-
-    return title
-
-    # Si ya está en cache, devolverlo
-    if title in _title_cache:
-        return _title_cache[title]
-
-    try:
-        # Detectar idioma y traducir si no es español
-        # GoogleTranslator detectará automáticamente el idioma origen
-        translated = GoogleTranslator(source="auto", target="es").translate(title)
-        if translated and translated != title:
-            _title_cache[title] = translated
-            return translated
+    except TranslationTimeout:
+        print(f"Translation timeout after {_TRANSLATION_TIMEOUT_SECONDS}s: {title[:80]}")
     except Exception as e:
         print(f"Translation error: {e}")
 
@@ -247,6 +399,28 @@ PROVIDERS = {
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
+
+
+def load_existing_titles_by_sku():
+    """Reuse titles already written to data.json so sync never depends on translation."""
+    if not os.path.exists(OUTPUT_JSON):
+        return {}
+
+    try:
+        with open(OUTPUT_JSON, "r", encoding="utf-8") as f:
+            current_data = json.load(f)
+    except Exception as exc:
+        print(f"Could not read existing titles from data.json: {exc}")
+        return {}
+
+    titles = {}
+    for section in ("products", "fbm_recommendations"):
+        for item in current_data.get(section, []):
+            sku = str(item.get("sku", "")).strip().upper()
+            title = item.get("title", "")
+            if sku and title:
+                titles[sku] = title
+    return titles
 
 
 def get_latest_dataweb_file():
@@ -764,6 +938,7 @@ def sync():
 
         reader = csv.DictReader(inventory_text.splitlines())
         rows = list(reader)
+        existing_titles_by_sku = load_existing_titles_by_sku()
 
         # ── ASIN-based lookup maps (built from the FULL inventory, not just FBA rows) ──
         # sku_to_asin: every SKU in the report → its ASIN
@@ -885,7 +1060,8 @@ def sync():
                 {
                     "asin": asin,
                     "sku": sku,
-                    "title": translate_to_spanish(row.get("Title", "")),
+                    "title": existing_titles_by_sku.get(sku)
+                    or translate_to_spanish(row.get("Title", "")),
                     "roi": roi,
                     "stock_amz": stock_amz,
                     "velocity": velocity,
@@ -937,7 +1113,8 @@ def sync():
                 {
                     "asin": asin,
                     "sku": base_sku,
-                    "title": translate_to_spanish(sku_to_title.get(base_sku, "")),
+                    "title": existing_titles_by_sku.get(base_sku)
+                    or translate_to_spanish(sku_to_title.get(base_sku, "")),
                     "sales_365": int(units or 0),
                     "sales_7": int(sales_7_asin_map.get(asin, 0) or 0),
                     "provider": {
