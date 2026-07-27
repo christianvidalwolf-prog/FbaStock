@@ -126,7 +126,10 @@ SKUS_FORZAR_CERO = {
     "3557VC",
     "3558VC",
     "3559VC",
+    "3593VC",
+    "3593VC0",
     "3712VC",
+    "3790VC",
     "3824VC",
     "4107VC",
     "4108VC",
@@ -173,10 +176,15 @@ SKUS_FORZAR_CERO = {
     "4790VC",
     "4801VC",
     "4815VC",
+    "4821VC",
     "4874VC",
     "4882VC",
     "5032VC",
+    "5088VC",
+    "5090VC",
+    "5096VC",
     "5113VC",
+    "5129VC",
     "5382VC",
     "5383VC",
     "5440VC",
@@ -251,6 +259,7 @@ PRECIOS_FIJOS = {
     "1304VC": 10.99,
     "15846VCI": 12.99,
     "11302VC": 16.99,
+    "43047SGRG": 39.99,
 }
 
 # SKUs excluidos de la automatización (se actualizan manualmente)
@@ -514,7 +523,6 @@ SKUS_MANUALES = {
     "20156MD",
     "20155MD",
     "40080MD",
-    "20007MD",
     "30024MD",
     "20152MD",
     "40093MD",
@@ -1244,10 +1252,10 @@ def download_files():
         )
         paths["dcasa"] = f"{WORK_DIR}/{local[-1]}"
     else:
-        for attempt in range(1, 7):
+        for attempt in range(1, 3):
             try:
-                print(f"Downloading DCASA from FTP (attempt {attempt}/6)...")
-                ftp = FTP(providers["dcasa"]["host"], timeout=180)
+                print(f"Downloading DCASA from FTP (attempt {attempt}/2)...")
+                ftp = FTP(providers["dcasa"]["host"], timeout=10)
                 ftp.set_pasv(True)
                 ftp.login(
                     user=providers["dcasa"]["user"], passwd=providers["dcasa"]["pass"]
@@ -1274,8 +1282,8 @@ def download_files():
                 break  # success
             except Exception as e:
                 print(f"WARNING: FTP attempt {attempt} failed ({e}).")
-                if attempt < 6:
-                    wait_time = 15 * attempt
+                if attempt < 2:
+                    wait_time = 5
                     print(f"Waiting {wait_time}s before next attempt...")
                     time.sleep(wait_time)
         local = sorted(
