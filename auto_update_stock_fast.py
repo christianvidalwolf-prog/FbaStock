@@ -2,6 +2,7 @@ import os
 import json
 import csv
 import time
+import shutil
 import pandas as pd
 from ftplib import FTP
 import datetime
@@ -14,7 +15,13 @@ EXCEL_PRICES_FILE = f"{WORK_DIR}/excel_prices_final.json"
 OUTPUT_FILE = f"{WORK_DIR}/STOCK AMZ.txt"
 PRECIOS_FILE = f"{WORK_DIR}/precios ES.xlsx"
 STOCK_TREDISER_FILE = f"{WORK_DIR}/STOCK TREDISER.xls"
+
 SKUS_FORZAR_CERO = {
+    "4085VC",
+    "4085VCI",
+    "2598VCI",
+    "2598VC",
+    "5324VC",
     "4100VCO",
     "4122VC0",
     "3635VC0",
@@ -69,6 +76,7 @@ SKUS_FORZAR_CERO = {
     "3019VC",
     "3020VC",
     "3021VC",
+    "3026VC",
     "3027VC",
     "3030VC",
     "3035VC",
@@ -229,6 +237,8 @@ SKUS_FORZAR_CERO = {
     "2861262CLM",
     "41683MDRG",
     "41891MDRG",
+    "11329VCT",
+    "11329VC",
 }
 
 SKUS_ELIMINADOS = {
@@ -260,6 +270,7 @@ PRECIOS_FIJOS = {
     "15846VCI": 12.99,
     "11302VC": 16.99,
     "43047SGRG": 39.99,
+    "4148VCI": 39.0,
 }
 
 # SKUs excluidos de la automatización (se actualizan manualmente)
@@ -513,7 +524,6 @@ SKUS_MANUALES = {
     "30173MD",
     "30036MD",
     "30035MD",
-    "40070MD",
     "40067MD",
     "20062MD",
     "40044MD",
@@ -1306,28 +1316,61 @@ def download_files():
         print(f"Using DCASA file: {os.path.basename(paths['dcasa'])}")
 
     # MINA & SIGNES
+    mina_tmp = f"{WORK_DIR}/minerales_feed_tmp.xml"
+    mina_target = f"{WORK_DIR}/minerales_feed.xml"
     subprocess.run(
         [
             "curl",
+            "-f",
             "-L",
             providers["mina"]["url"],
             "-o",
-            f"{WORK_DIR}/minerales_feed.xml",
+            mina_tmp,
         ],
         capture_output=True,
     )
-    paths["mina"] = f"{WORK_DIR}/minerales_feed.xml"
+    if os.path.exists(mina_tmp) and os.path.getsize(mina_tmp) > 1000:
+        with open(mina_tmp, "r", encoding="latin1", errors="ignore") as f:
+            first_chunk = f.read(500).lower()
+        if "<!doctype html" not in first_chunk and "<html" not in first_chunk:
+            shutil.move(mina_tmp, mina_target)
+            print("Successfully updated minerales_feed.xml")
+        else:
+            print("Downloaded minerales file is HTML error, keeping existing minerales_feed.xml")
+            try:
+                os.remove(mina_tmp)
+            except OSError:
+                pass
+    else:
+        if os.path.exists(mina_tmp):
+            try:
+                os.remove(mina_tmp)
+            except OSError:
+                pass
+        print("Download of minerales feed failed or returned error, keeping existing minerales_feed.xml")
+    paths["mina"] = mina_target
+
+    signes_tmp = f"{WORK_DIR}/signes_stock_tmp.csv"
+    signes_target = f"{WORK_DIR}/signes_stock.csv"
     subprocess.run(
         [
             "curl",
+            "-f",
             "-L",
             providers["signes"]["url"],
             "-o",
-            f"{WORK_DIR}/signes_stock.csv",
+            signes_tmp,
         ],
         capture_output=True,
     )
-    paths["signes"] = f"{WORK_DIR}/signes_stock.csv"
+    if os.path.exists(signes_tmp) and os.path.getsize(signes_tmp) > 1000:
+        shutil.move(signes_tmp, signes_target)
+    elif os.path.exists(signes_tmp):
+        try:
+            os.remove(signes_tmp)
+        except OSError:
+            pass
+    paths["signes"] = signes_target
 
     return paths
 
@@ -1577,7 +1620,13 @@ def run_fast_update():
             pass
 
         # Force stock=0 for SKUs in SKUS_FORZAR_CERO (any provider)
-        if sku in SKUS_FORZAR_CERO:
+        clean_sku_upper = str(sku).upper().strip()
+        forzar_set = {str(s).upper().strip() for s in SKUS_FORZAR_CERO}
+        if (
+            clean_sku_upper in forzar_set
+            or any(clean_sku_upper.startswith(s) for s in forzar_set)
+            or (provider == "VC" and lookup_id in {"4085", "5324", "2598"})
+        ):
             final_stock = 0
 
         # Final Safety Check
@@ -1654,6 +1703,11 @@ def run_fast_update():
     with open(OUTPUT_FILE, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f, delimiter="\t")
         writer.writerows(output_rows)
+
+    # Also save as CSV for compatibility
+    for csv_name in ("STOCK AMZ.csv", "stock amz.csv"):
+        shutil.copy2(OUTPUT_FILE, f"{WORK_DIR}/{csv_name}")
+
     print("Export finished.")
 
 
