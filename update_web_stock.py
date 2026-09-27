@@ -14,6 +14,10 @@ SIGNES_STOCK = os.path.join(WORK_DIR, "signes_stock.csv")
 CATALOG_FILE = os.path.join(WORK_DIR, "catalog_robust.json")
 BASE_STOCKS_FILE = os.path.join(WORK_DIR, "base_stocks.json")
 STOCK_TREDISER_FILE = os.path.join(WORK_DIR, "STOCK TREDISER.xls")
+# SKUs dados de alta en PrestaShop (Signes/Dcasa, sept. 2026): se añaden al Stock Web si faltan
+# y fijan el proveedor (hay SKUs Dcasa con sufijo SGI que el parser tomaría por Signes).
+PRESTASHOP_NEW_SKUS = os.path.join(WORK_DIR, "prestashop_new_skus.csv")
+MAX_WEB_STOCK = 99  # tope de unidades publicadas en la web
 
 def to_num(val):
     if val is None or val == "":
@@ -80,6 +84,15 @@ def load_suppliers_data():
     stocks = {"VC": {}, "SG": {}, "DC": {}, "MD": {}}
     
     # 1. Minerales (VC)
+    try:
+        from update_minerales_feed import find_latest_manual_file, convert_manual_csv_to_feed
+        manual_file = find_latest_manual_file()
+        if manual_file and os.path.exists(manual_file):
+            if not os.path.exists(MINERALES_FEED) or os.path.getmtime(manual_file) > os.path.getmtime(MINERALES_FEED):
+                convert_manual_csv_to_feed(manual_file, MINERALES_FEED)
+    except Exception:
+        pass
+
     if os.path.exists(MINERALES_FEED):
         try:
             # Minerales usually uses pipe separator |
@@ -156,6 +169,7 @@ def get_provider_and_id(sku):
         (r"^(\d+)SGRG", "SG"),
         (r"^(\d+)SGR", "SG"),
         (r"^(\d+)SGFBA", "SG"),
+        (r"^(\d+)\s*SGI?", "SG"),
         (r"^(\d+)SG", "SG"),
         (r"^(\d+)VCFBA", "VC"),
         (r"^(\d+)VCT", "VC"),
@@ -188,6 +202,13 @@ def get_provider_and_id(sku):
         return "DC", digits
         
     return None, None
+
+def load_prestashop_new_skus():
+    """sku -> (proveedor, codigo) desde prestashop_new_skus.csv."""
+    if not os.path.exists(PRESTASHOP_NEW_SKUS):
+        return {}
+    df = pd.read_csv(PRESTASHOP_NEW_SKUS, sep=";", dtype=str)
+    return {row["sku"].strip(): (row["proveedor"].strip(), row["codigo"].strip()) for _, row in df.iterrows()}
 
 def main():
     print(f"--- Starting Web Stock Update @ {datetime.now()} ---")
@@ -224,6 +245,13 @@ def main():
     SKUS_ELIMINADOS = {"277222CLM", "22473SG", "193SG"}
     df_web = df_web[~df_web[0].astype(str).str.strip().isin(SKUS_ELIMINADOS)]
 
+    new_skus = load_prestashop_new_skus()
+    existing = set(df_web[0].astype(str).str.strip())
+    missing = [s for s in new_skus if s not in existing]
+    if missing:
+        df_web = pd.concat([df_web, pd.DataFrame({0: missing, 1: 0.0})], ignore_index=True)
+    print(f"PrestaShop new SKUs: {len(new_skus)} listed, {len(missing)} appended")
+
     updated_count = 0
     not_found_count = 0
     
@@ -232,14 +260,14 @@ def main():
         if sku == "nan" or not sku:
             continue
             
-        # Always set stock to 0 for SKU 3370VC
-        if sku.upper().strip() == "3370VC":
+        # Always set stock to 0 for SKUs 3370VC, 5324VC, 2598VCI, 2598VC, 4085VC, 4085VCI
+        if sku.upper().strip() in {"3370VC", "5324VC", "2598VCI", "2598VC", "4085VC", "4085VCI"}:
             df_web.at[idx, 1] = 0.0
             updated_count += 1
             continue
             
-        prov, clean_id = get_provider_and_id(sku)
-        
+        prov, clean_id = new_skus.get(sku) or get_provider_and_id(sku)
+
         if prov and clean_id:
             raw_stock = 0
             if prov == "MD":
@@ -260,7 +288,8 @@ def main():
                     final_stock = raw_stock
             elif prov == "MD":
                 final_stock = raw_stock
-            
+
+            final_stock = min(final_stock, MAX_WEB_STOCK)
             df_web.at[idx, 1] = float(final_stock)
             updated_count += 1
         else:
@@ -275,6 +304,16 @@ def main():
         print(f"Successfully saved updated stock to {STOCK_WEB_CSV} and {STOCK_WEB_HISTORY_CSV}")
     except Exception as e:
         print(f"Error saving CSV: {e}")
+
+    cleanup_old_history_files()
+
+def cleanup_old_history_files(days=10):
+    cutoff = (datetime.now() - pd.Timedelta(days=days)).strftime('%Y%m%d')
+    for f in glob.glob(os.path.join(WORK_DIR, "Stock Web *.csv")):
+        m = re.search(r'(\d{8})', os.path.basename(f))
+        if m and m.group(1) < cutoff:
+            os.remove(f)
+            print(f"Removed old history file: {f}")
 
 if __name__ == "__main__":
     main()
