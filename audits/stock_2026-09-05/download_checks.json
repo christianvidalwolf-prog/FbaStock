@@ -1,0 +1,16 @@
+[
+  {
+    "provider": "mina",
+    "returncode": 0,
+    "http": "404",
+    "bytes": 70736,
+    "preview": "<!doctype html>\n<html lang=\"es\">\n\n  <head>\n\t\n\t  \n  <meta charset=\"utf-8\">\n\n\n  <meta http-equiv=\"x-ua-compatible\" content"
+  },
+  {
+    "provider": "signes",
+    "returncode": 0,
+    "http": "200",
+    "bytes": 1269236,
+    "preview": "Codigo;Descripcion;Stock;PVP;Peso neto;Grupo registro IVA prod.;Altura;Anchura;Longitud;C\ufffdd. EAN;Caracteristicas);Caract"
+  }
+]

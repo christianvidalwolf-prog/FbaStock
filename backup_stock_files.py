@@ -7,7 +7,7 @@ WORK_DIR = "/Users/christianvidalwolf/Stock"
 CONFIG_FILE = os.path.join(WORK_DIR, "stock_backup_dir.txt")
 
 FILES_TO_BACKUP = [
-    ("STOCK AMZ.txt", "STOCK AMZ {date}.txt"),
+    ("STOCK AMZ.xlsm", "STOCK AMZ {date}.xlsm"),
     ("Stock Web.csv", "Stock Web {date}.csv"),
     ("cdisc precio.xlsx", "cdisc precio {date}.xlsx"),
 ]

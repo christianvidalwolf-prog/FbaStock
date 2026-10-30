@@ -3,10 +3,13 @@ import json
 import csv
 import time
 import shutil
+import glob
+import re
 import pandas as pd
 from ftplib import FTP
 import datetime
 import subprocess
+from amazon_stock_workbook import export_amazon_workbook
 
 # --- CONFIGURATION ---
 WORK_DIR = "/Users/christianvidalwolf/Stock"
@@ -15,6 +18,8 @@ EXCEL_PRICES_FILE = f"{WORK_DIR}/excel_prices_final.json"
 OUTPUT_FILE = f"{WORK_DIR}/STOCK AMZ.txt"
 PRECIOS_FILE = f"{WORK_DIR}/precios ES.xlsx"
 STOCK_TREDISER_FILE = f"{WORK_DIR}/STOCK TREDISER.xls"
+SIGNES_SGI_FILE = f"{WORK_DIR}/signes_sgi_amazon.csv"
+DCASA_DCI_FILE = f"{WORK_DIR}/dcasa_dci_amazon.csv"
 
 AMAZON_NEW_TEMPLATE_HEADERS = [
     ['settings=feedType=256&timestamp=2026-09-04T11%3A57%3A59.677Z&contributorId=amzn1.cr.o.A3RY0L9OY3TPHI&primaryMarketplaceId=amzn1.mp.o.A1RKKUPIHCS9HS&contentLanguageTag=es_ES&templateIdentifier=e4bbc050-a76e-4b77-acd9-e91ac5e8be26&headerLanguageTag=es_ES&labelRow=4&attributeRow=5&dataRow=7&flavor=seller-price-quantity&isProcessingSummary=false&isEdit=false&productTypeRequirement=LISTING_OFFER_ONLY&listingsItemRequirement=LISTING_OFFER_ONLY&reportProvenance=false&settingsHasAllDelocalizationData=true&upgradedFrom=priceandqty&ptds=UFJPRFVDVA%3D%3D&ptdToNamespaceMap=eyJQUk9EVUNUIjoiaW5nZXN0aW9uIn0%3D&browseClassifications=W3sicHJvZHVjdFR5cGUiOiJQUk9EVUNUIiwiYnJvd3NlQ2xhc3NpZmljYXRpb25LZXlzIjpbXX1d&vendorCodes=W10%3D&AttributeDefaultValues=eyJwcm9kdWN0X3R5cGUjMS52YWx1ZSI6IlBST0RVQ1QiLCJyZWNvcmRfYWN0aW9uIzEudmFsdWUiOiJwYXJ0aWFsX3VwZGF0ZSJ9&attributeSettings=W3siYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbbWFya2V0cGxhY2VfaWQ9QTFSS0tVUElIQ1M5SFNdW2F1ZGllbmNlPUFMTF0jMS5vdXJfcHJpY2UjMS5zY2hlZHVsZSMxLnZhbHVlX3dpdGhfdGF4IiwiYWxpYXNlcyI6eyJFbGltaW5hciBvZmVydGEgKFZlbmRlciBlbiBBbWF6b24pIjoiYW16bjEudm9sdC5jdi5kZWxldGVfdW1wX3ZhcmlhbnQifX0seyJhdHRyaWJ1dGUiOiJwdXJjaGFzYWJsZV9vZmZlclttYXJrZXRwbGFjZV9pZD1BMVJLS1VQSUhDUzlIU11bYXVkaWVuY2U9QUxMXSMxLm1heGltdW1fc2VsbGVyX2FsbG93ZWRfcHJpY2UjMS5zY2hlZHVsZSMxLnZhbHVlX3dpdGhfdGF4IiwiYWxpYXNlcyI6eyJFbGltaW5hciBQcmVjaW8gbcOheGltbyBwZXJtaXRpZG8gYWwgdmVuZGVkb3IgKFZlbmRlciBlbiBBbWF6b24sIEVTKSI6ImFtem4xLnZvbHQuY3YuZGVsZXRlX3VtcF90b3BfbGV2ZWxfZmllbGQifX0seyJhdHRyaWJ1dGUiOiJtZXJjaGFudF9zaGlwcGluZ19ncm91cCMxLnZhbHVlIiwiYWxpYXNlcyI6eyJFTlZJTyA0IjoibGVnYWN5LXRlbXBsYXRlLWlkIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSBtw7pzaWNhIjoibGVnYWN5LW11c2ljLXRlbXBsYXRlLWlkIiwiR1JVUE8gMCI6ImY4MzczNDFlLTk3MjUtNDUyNC05YjhlLTk1YmM2OWFkMjUzZCIsIlByaW1lIFZlbmRlZG9yIjoiYWRmYTdhZmEtY2QyMS00NTNhLWJmNjUtMDFiYWY0MjBlYmJkIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSB2aWRlbyI6ImxlZ2FjeS12aWRlby10ZW1wbGF0ZS1pZCIsIkVudmlvcyAzIGRpYXMiOiIxZWZhODE5Zi1kOTEyLTRkZDAtODYwNy04NzUwY2IwZjZlNGEiLCJQbGFudGlsbGEgbWlncmFkYSBwYXJhIGxpYnJvcyI6ImxlZ2FjeS1ib29rLXRlbXBsYXRlLWlkIiwiUHJpbWUgTmFjaW9uYWwiOiI3MDM0MjFiYy03ODQzLTRjZTgtYjJiMC1kYmYxYWMxYzY5YjYiLCJQZW5pbnN1bGEzIjoiYWM4ZGY4ZDgtNzlkZC00ZGVkLThjMTYtNTMyZWRkZDEyOTYyIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSBEVkQiOiJsZWdhY3ktZHZkLXRlbXBsYXRlLWlkIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbbWFya2V0cGxhY2VfaWQ9QTFSS0tVUElIQ1M5SFNdW2F1ZGllbmNlPUFMTF0jMS5jdXJyZW5jeSIsImFsaWFzZXMiOnsiRVVSIjoiRVVSIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbbWFya2V0cGxhY2VfaWQ9QTFSS0tVUElIQ1M5SFNdW2F1ZGllbmNlPUFMTF0jMS5taW5pbXVtX3NlbGxlcl9hbGxvd2VkX3ByaWNlIzEuc2NoZWR1bGUjMS52YWx1ZV93aXRoX3RheCIsImFsaWFzZXMiOnsiRWxpbWluYXIgUHJlY2lvIG3DrW5pbW8gcGVybWl0aWRvIGFsIHZlbmRlZG9yIChWZW5kZXIgZW4gQW1hem9uLCBFUykiOiJhbXpuMS52b2x0LmN2LmRlbGV0ZV91bXBfdG9wX2xldmVsX2ZpZWxkIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbYXVkaWVuY2U9QjJCXSMxLnF1YW50aXR5X2Rpc2NvdW50X3BsYW4jMS5zY2hlZHVsZSMxLmRpc2NvdW50X3R5cGUiLCJhbGlhc2VzIjp7ImZpeGVkIjoiZml4ZWQiLCJwZXJjZW50IjoicGVyY2VudCJ9fSx7ImF0dHJpYnV0ZSI6InB1cmNoYXNhYmxlX29mZmVyW21hcmtldHBsYWNlX2lkPUExUktLVVBJSENTOUhTXVthdWRpZW5jZT1CMkJdIzEuY3VycmVuY3kiLCJhbGlhc2VzIjp7IkVVUiI6IkVVUiJ9fSx7ImF0dHJpYnV0ZSI6InB1cmNoYXNhYmxlX29mZmVyW21hcmtldHBsYWNlX2lkPUExUktLVVBJSENTOUhTXVthdWRpZW5jZT1CMkJdIzEucXVhbnRpdHlfZGlzY291bnRfcGxhbiMxLnNjaGVkdWxlIzEuZGlzY291bnRfdHlwZSIsImFsaWFzZXMiOnsiZml4ZWQiOiJmaXhlZCIsIkVsaW1pbmFyIGRlc2N1ZW50b3MgcG9yIGNhbnRpZGFkIjoiYW16bjEudm9sdC5jdi5kZWxldGVfdW1wX3RvcF9sZXZlbF9maWVsZCIsInBlcmNlbnQiOiJwZXJjZW50In19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbYXVkaWVuY2U9QUxMXSMxLmF1dG9tYXRlZF9wcmljaW5nX21lcmNoYW5kaXNpbmdfcnVsZV9wbGFuIzEubWVyY2hhbmRpc2luZ19ydWxlLnJ1bGVfaWQiLCJhbGlhc2VzIjp7IkdyYWRlIEFuZCBSZXNlbGwgQXV0b21hdGVkIFByaWNpbmcgUnVsZSI6Ijk2MjAxMzY1NDAwMi1HUkFERV9BTkRfUkVTRUxMX0FVVE9NQVRFRCIsIkNvbnRyb2wiOiJkMGYzNGY5OC0xNmMzLTRmZGMtYjU2OS05MTRiMmUzNDg2NTYiLCJCdXNpbmVzcyI6ImEzYjdmOTA4LTlhOTUtNGM3My1iOGZlLWUzOGI3YmZkM2M5OCIsIkNvbXBldGl0aXZlIFByaWNlIFJ1bGUgYnkgQW1hem9uIjoiMTg0MzY2MzcxMDAyLUNPTVBFVElUSVZFX0JVWUJPWCJ9fSx7ImF0dHJpYnV0ZSI6Im1lcmNoYW50X3NoaXBwaW5nX2dyb3VwW21hcmtldHBsYWNlX2lkPUExUktLVVBJSENTOUhTXSMxLnZhbHVlIiwiYWxpYXNlcyI6eyJFTlZJTyA0IjoibGVnYWN5LXRlbXBsYXRlLWlkIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSBtw7pzaWNhIjoibGVnYWN5LW11c2ljLXRlbXBsYXRlLWlkIiwiR1JVUE8gMCI6ImY4MzczNDFlLTk3MjUtNDUyNC05YjhlLTk1YmM2OWFkMjUzZCIsIlByaW1lIFZlbmRlZG9yIjoiYWRmYTdhZmEtY2QyMS00NTNhLWJmNjUtMDFiYWY0MjBlYmJkIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSB2aWRlbyI6ImxlZ2FjeS12aWRlby10ZW1wbGF0ZS1pZCIsIkVudmlvcyAzIGRpYXMiOiIxZWZhODE5Zi1kOTEyLTRkZDAtODYwNy04NzUwY2IwZjZlNGEiLCJQbGFudGlsbGEgbWlncmFkYSBwYXJhIGxpYnJvcyI6ImxlZ2FjeS1ib29rLXRlbXBsYXRlLWlkIiwiUHJpbWUgTmFjaW9uYWwiOiI3MDM0MjFiYy03ODQzLTRjZTgtYjJiMC1kYmYxYWMxYzY5YjYiLCJQZW5pbnN1bGEzIjoiYWM4ZGY4ZDgtNzlkZC00ZGVkLThjMTYtNTMyZWRkZDEyOTYyIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSBEVkQiOiJsZWdhY3ktZHZkLXRlbXBsYXRlLWlkIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbbWFya2V0cGxhY2VfaWQ9QTFSS0tVUElIQ1M5SFNdW2F1ZGllbmNlPUIyQl0jMS5taW5pbXVtX3NlbGxlcl9hbGxvd2VkX3ByaWNlIzEuc2NoZWR1bGUjMS52YWx1ZV93aXRoX3RheCIsImFsaWFzZXMiOnsiRWxpbWluYXIgUHJlY2lvIG3DrW5pbW8gcGVybWl0aWRvIGFsIHZlbmRlZG9yIChCMkIsIEVTKSI6ImFtem4xLnZvbHQuY3YuZGVsZXRlX3VtcF90b3BfbGV2ZWxfZmllbGQifX0seyJhdHRyaWJ1dGUiOiJwdXJjaGFzYWJsZV9vZmZlclttYXJrZXRwbGFjZV9pZD1BMVJLS1VQSUhDUzlIU11bYXVkaWVuY2U9QUxMXSMxLmF1dG9tYXRlZF9wcmljaW5nX21lcmNoYW5kaXNpbmdfcnVsZV9wbGFuIzEubWVyY2hhbmRpc2luZ19ydWxlLnJ1bGVfaWQiLCJhbGlhc2VzIjp7IkdyYWRlIEFuZCBSZXNlbGwgQXV0b21hdGVkIFByaWNpbmcgUnVsZSI6Ijk2MjAxMzY1NDAwMi1HUkFERV9BTkRfUkVTRUxMX0FVVE9NQVRFRCIsIkNvbnRyb2wiOiJkMGYzNGY5OC0xNmMzLTRmZGMtYjU2OS05MTRiMmUzNDg2NTYiLCJCdXNpbmVzcyI6ImEzYjdmOTA4LTlhOTUtNGM3My1iOGZlLWUzOGI3YmZkM2M5OCIsIkNvbXBldGl0aXZlIFByaWNlIFJ1bGUgYnkgQW1hem9uIjoiMTg0MzY2MzcxMDAyLUNPTVBFVElUSVZFX0JVWUJPWCJ9fSx7ImF0dHJpYnV0ZSI6InByb2R1Y3RfdHlwZSMxLnZhbHVlIiwiYWxpYXNlcyI6eyJQUk9EVUNUIjoiUFJPRFVDVCJ9fSx7ImF0dHJpYnV0ZSI6ImZ1bGZpbGxtZW50X2F2YWlsYWJpbGl0eSMxLmlzX2ludmVudG9yeV9hdmFpbGFibGUiLCJhbGlhc2VzIjp7IkhhYmlsaXRhZG8iOiJ0cnVlIiwiRGVzaGFiaWxpdGFkbyI6ImZhbHNlIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbbWFya2V0cGxhY2VfaWQ9QTFSS0tVUElIQ1M5SFNdW2F1ZGllbmNlPUIyQl0jMS5tYXhpbXVtX3NlbGxlcl9hbGxvd2VkX3ByaWNlIzEuc2NoZWR1bGUjMS52YWx1ZV93aXRoX3RheCIsImFsaWFzZXMiOnsiRWxpbWluYXIgUHJlY2lvIG3DoXhpbW8gcGVybWl0aWRvIGFsIHZlbmRlZG9yIChCMkIsIEVTKSI6ImFtem4xLnZvbHQuY3YuZGVsZXRlX3VtcF90b3BfbGV2ZWxfZmllbGQifX0seyJhdHRyaWJ1dGUiOiJwdXJjaGFzYWJsZV9vZmZlclthdWRpZW5jZT1CMkJdIzEuY3VycmVuY3kiLCJhbGlhc2VzIjp7IkVVUiI6IkVVUiJ9fSx7ImF0dHJpYnV0ZSI6InB1cmNoYXNhYmxlX29mZmVyW21hcmtldHBsYWNlX2lkPUExUktLVVBJSENTOUhTXVthdWRpZW5jZT1CMkJdIzEub3VyX3ByaWNlIzEuc2NoZWR1bGUjMS52YWx1ZV93aXRoX3RheCIsImFsaWFzZXMiOnsiRWxpbWluYXIgb2ZlcnRhIChCMkIpIjoiYW16bjEudm9sdC5jdi5kZWxldGVfdW1wX3ZhcmlhbnQifX0seyJhdHRyaWJ1dGUiOiJmdWxmaWxsbWVudF9hdmFpbGFiaWxpdHkjMS5mdWxmaWxsbWVudF9jaGFubmVsX2NvZGUiLCJhbGlhc2VzIjp7IkFNQVpPTl9FVV9SQUZOIjoiQU1BWk9OX0VVX1JBRk4iLCJBTUFaT05fRVUyVFJfUkFGTiI6IkFNQVpPTl9FVTJUUl9SQUZOIiwiTG9nw61zdGljYSBwb3IgcGFydGUgZGVsIHZlbmRlZG9yIChwcmVkZXRlcm1pbmFkbykiOiJERUZBVUxUIiwiQU1BWk9OX1VLX1JBRk4iOiJBTUFaT05fVUtfUkFGTiIsIkFNQVpPTl9VSzJOTF9SQUZOIjoiQU1BWk9OX1VLMk5MX1JBRk4iLCJBTUFaT05fRVVfVkNTIjoiQU1BWk9OX0VVX1ZDUyIsIkxvZ8Otc3RpY2EgZGUgQW1hem9uIChVRSkiOiJBTUFaT05fRVUiLCJBTUFaT05fRVUyU0FfUkFGTiI6IkFNQVpPTl9FVTJTQV9SQUZOIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbYXVkaWVuY2U9QUxMXSMxLmN1cnJlbmN5IiwiYWxpYXNlcyI6eyJFVVIiOiJFVVIifX1d&TemplateType=unified&Version=2026.0904&TemplateSignature=UFJPRFVDVA==&umpVersion=MS41NC40NQ==', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
@@ -26,6 +31,8 @@ AMAZON_NEW_TEMPLATE_HEADERS = [
 ]
 
 SKUS_FORZAR_CERO = {
+    "30993SG",  # stock 0 permanente (petición 21 oct 2026)
+    "28413SG",  # stock 0 permanente (petición 14 oct 2026)
     "4085VC",
     "4085VCI",
     "2598VCI",
@@ -248,6 +255,9 @@ SKUS_FORZAR_CERO = {
     "41891MDRG",
     "11329VCT",
     "11329VC",
+    "5635VC",
+    "4954VC",
+    "5597VC",
 }
 
 SKUS_ELIMINADOS = {
@@ -257,6 +267,10 @@ SKUS_ELIMINADOS = {
 }
 
 PRECIOS_FIJOS = {
+    "9046VC": 11.95,
+    "41183SGI": 89.0,
+    "27349RGSG": 139.0,
+    "39380 SGI": 16.95,
     "2515VCI": 59.0,
     "4746VC": 22.0,
     "31612SG": 25.0,
@@ -280,6 +294,11 @@ PRECIOS_FIJOS = {
     "11302VC": 16.99,
     "43047SGRG": 39.99,
     "4148VCI": 39.0,
+    "20006MDRG": 88.0,
+    "2684314CLM": 21.95,
+    "42812MD": 13.95,
+    "2684319CLM": 19.99,
+    "15738VCI": 16.50,
 }
 
 # SKUs excluidos de la automatización (se actualizan manualmente)
@@ -411,7 +430,6 @@ SKUS_MANUALES = {
     "20710MDRG",
     "20725MDRG",
     "20726MDRG",
-    "20006MDRG",
     "20008MDRG",
     "20606MDRG",
     "20733MDRG",
@@ -1327,6 +1345,18 @@ def download_files():
     # MINA & SIGNES
     mina_tmp = f"{WORK_DIR}/minerales_feed_tmp.xml"
     mina_target = f"{WORK_DIR}/minerales_feed.xml"
+
+    # Check for manual Minerales file first
+    try:
+        from update_minerales_feed import find_latest_manual_file, convert_manual_csv_to_feed
+        manual_mina = find_latest_manual_file()
+        if manual_mina and os.path.exists(manual_mina):
+            print(f"Processing manual Minerales file: {manual_mina}")
+            if convert_manual_csv_to_feed(manual_mina, mina_target):
+                print(f"Successfully updated {mina_target} from manual file")
+    except Exception as e:
+        print(f"Notice: manual Minerales check error: {e}")
+
     subprocess.run(
         [
             "curl",
@@ -1343,7 +1373,7 @@ def download_files():
             first_chunk = f.read(500).lower()
         if "<!doctype html" not in first_chunk and "<html" not in first_chunk:
             shutil.move(mina_tmp, mina_target)
-            print("Successfully updated minerales_feed.xml")
+            print("Successfully updated minerales_feed.xml from URL")
         else:
             print("Downloaded minerales file is HTML error, keeping existing minerales_feed.xml")
             try:
@@ -1356,7 +1386,7 @@ def download_files():
                 os.remove(mina_tmp)
             except OSError:
                 pass
-        print("Download of minerales feed failed or returned error, keeping existing minerales_feed.xml")
+        print("Download of minerales feed failed or returned error, keeping existing/manual minerales_feed.xml")
     paths["mina"] = mina_target
 
     signes_tmp = f"{WORK_DIR}/signes_stock_tmp.csv"
@@ -1384,18 +1414,77 @@ def download_files():
     return paths
 
 
+def load_dcasa_dci_prices(path):
+    """Load the approved Dcasa DCI listings with the price already live on Amazon."""
+    prices = {}
+    if not os.path.exists(path):
+        return prices
+    with open(path, newline="", encoding="utf-8") as source:
+        reader = csv.DictReader(source)
+        if reader.fieldnames != ["sku", "price"]:
+            raise ValueError("DCI catalog requires sku,price headers")
+        for row in reader:
+            sku = row["sku"].strip()
+            price = float(row["price"])
+            if not sku.endswith("DCI") or not sku[:-3].isdigit():
+                raise ValueError(f"Invalid Dcasa DCI SKU: {sku}")
+            if not 0 < price < float("inf") or sku in prices:
+                raise ValueError(f"Invalid price or duplicate DCI SKU: {sku}")
+            prices[sku] = price
+    return prices
+
+
+def load_signes_sgi_prices(path):
+    """Load the approved SGI listings, preserving their full Amazon SKUs."""
+    prices = {}
+    with open(path, newline="", encoding="utf-8") as source:
+        reader = csv.DictReader(source)
+        if reader.fieldnames != ["sku", "price"]:
+            raise ValueError("SGI catalog requires sku,price headers")
+        for row in reader:
+            sku = row["sku"].strip()
+            price = float(row["price"])
+            if not sku.endswith("SGI") or not sku[:-3].isdigit():
+                raise ValueError(f"Invalid Signes SGI SKU: {sku}")
+            if not 0 < price < float("inf") or sku in prices:
+                raise ValueError(f"Invalid price or duplicate SGI SKU: {sku}")
+            prices[sku] = price
+    if not prices:
+        raise ValueError("SGI catalog is empty")
+    return prices
+
+
 def run_fast_update():
     print(f"--- Fast Stock Update @ {datetime.datetime.now()} ---")
 
     if not os.path.exists(CATALOG_FILE) or not os.path.exists(EXCEL_PRICES_FILE):
-        print("Error: JSON files missing. Run extract_full.py first.")
-        return
+        raise FileNotFoundError("JSON files missing. Run extract_full.py first.")
 
     with open(CATALOG_FILE, "r") as f:
         catalog = json.load(f)
     with open(EXCEL_PRICES_FILE, "r") as f:
         excel_prices = json.load(f)
     print(f"Loaded {len(catalog)} SKUs mapping.")
+
+    # User-approved listings from NOVEDADES AMZ SG.xlsx. SGI is the Amazon
+    # suffix; SG is only the internal supplier key. Match the numeric feed ID.
+    sgi_prices = load_signes_sgi_prices(SIGNES_SGI_FILE)
+    catalog = [entry for entry in catalog if entry["sku"] not in sgi_prices]
+    catalog.extend(
+        {"sku": sku, "provider": "SG", "id": sku[:-3]}
+        for sku in sgi_prices
+    )
+    print(f"Loaded {len(sgi_prices)} approved Signes SGI listings.")
+
+    # Approved Dcasa listings created with the DCI suffix. Stock comes from the
+    # DataWeb feed (numeric CODIGO); price is the one already live on Amazon.
+    dci_prices = load_dcasa_dci_prices(DCASA_DCI_FILE)
+    catalog = [entry for entry in catalog if entry["sku"] not in dci_prices]
+    catalog.extend(
+        {"sku": sku, "provider": "DC", "id": sku[:-3]}
+        for sku in dci_prices
+    )
+    print(f"Loaded {len(dci_prices)} approved Dcasa DCI listings.")
 
     # Load Base Stocks for MD (from STOCK ES)
     BASE_STOCKS_FILE = f"{WORK_DIR}/base_stocks.json"
@@ -1520,6 +1609,8 @@ def run_fast_update():
             continue
 
         provider = entry["provider"]
+        if provider == "Unknown" and (sku.endswith("MD") or "MDRG" in sku or "MDFBA" in sku):
+            provider = "MD"
         l_id = entry["id"]
 
         if sku in SKUS_MANUALES and provider != "MD":
@@ -1549,6 +1640,9 @@ def run_fast_update():
         if sku in PRECIOS_FIJOS:
             final_price = PRECIOS_FIJOS[sku]
 
+        if sku in sgi_prices:
+            final_price = sgi_prices[sku]
+
         # Apply 5% increase + rounding to .95 for VC SKUs with price < 30
         if (
             sku not in PRECIOS_FIJOS
@@ -1558,8 +1652,16 @@ def run_fast_update():
         ):
             final_price = apply_vc_price_increase(final_price)
 
+        if sku in dci_prices:
+            final_price = dci_prices[sku]
+
         # Apply 5% increase + round so 2nd decimal is 5 for DC providers
-        if sku not in PRECIOS_FIJOS and provider == "DC" and final_price > 0:
+        if (
+            sku not in PRECIOS_FIJOS
+            and sku not in dci_prices
+            and provider == "DC"
+            and final_price > 0
+        ):
             final_price = final_price * 1.05
             final_price = round(int(final_price * 10) / 10.0 + 0.05, 2)
 
@@ -1572,7 +1674,9 @@ def run_fast_update():
                 if isinstance(row, pd.DataFrame):
                     row = row.iloc[0]
                 raw_stock = to_num(row[7])
-                if raw_stock >= 5:
+                if lookup_id == "2162" and raw_stock == 91:
+                    final_stock = 0
+                elif raw_stock >= 5:
                     final_stock = raw_stock
                 else:
                     final_stock = 0
@@ -1708,6 +1812,19 @@ def run_fast_update():
         row_32[9] = max_p_str
         output_rows.append(row_32)
 
+    # The approved XLSM is the Amazon upload artifact. TXT/CSV remain compatibility exports.
+    xlsm_file = os.path.join(WORK_DIR, "STOCK AMZ.xlsm")
+    result = export_amazon_workbook(
+        output_rows[len(AMAZON_NEW_TEMPLATE_HEADERS):],
+        AMAZON_NEW_TEMPLATE_HEADERS[4],
+        xlsm_file,
+    )
+    dated_xlsm = os.path.join(
+        WORK_DIR, f"STOCK AMZ {datetime.datetime.now():%Y%m%d}.xlsm"
+    )
+    shutil.copy2(xlsm_file, dated_xlsm)
+    print(f"Amazon XLSM generated: {result['skus']} SKUs, {result['with_stock']} with stock: {dated_xlsm}")
+
     print(f"Writing {len(output_rows)} rows to {OUTPUT_FILE}...")
     with open(OUTPUT_FILE, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f, delimiter="\t")
@@ -1717,7 +1834,19 @@ def run_fast_update():
     for csv_name in ("STOCK AMZ.csv", "stock amz.csv"):
         shutil.copy2(OUTPUT_FILE, f"{WORK_DIR}/{csv_name}")
 
+    cleanup_old_dated_files()
+
     print("Export finished.")
+
+
+def cleanup_old_dated_files(days=10):
+    cutoff = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime("%Y%m%d")
+    for pattern in ("DataWeb*.csv", "STOCK AMZ *.xlsm"):
+        for f in glob.glob(os.path.join(WORK_DIR, pattern)):
+            m = re.search(r"(\d{8})", os.path.basename(f))
+            if m and m.group(1) < cutoff:
+                os.remove(f)
+                print(f"Removed old dated file: {f}")
 
 
 if __name__ == "__main__":

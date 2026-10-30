@@ -1,0 +1,14 @@
+{
+  "source": "/Users/christianvidalwolf/Downloads/STOCK+AMZ-Nueva_Versión-processing-summary (1).xlsm",
+  "output": "/Users/christianvidalwolf/Stock/exports/STOCK-AMZ-Nueva-Version-actualizado-20260905.xlsm",
+  "sku_count": 23139,
+  "positive_before": 3274,
+  "positive_after": 6819,
+  "quantity_changes": 3547,
+  "positive_skus_with_existing_errors": 1893,
+  "changed_zip_members": [
+    "xl/worksheets/sheet6.xml"
+  ],
+  "sha256": "f40810ebc9e2a9e16040470d30a5aac392837ca3eaf6d2f4c6b0a63940ff348c",
+  "validation": "All SKU quantities match audited TXT; all other cells and ZIP members unchanged."
+}

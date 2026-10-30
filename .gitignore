@@ -31,6 +31,7 @@ extract_robust.py
 *.log
 
 # Output
+/STOCK AMZ*.xlsm
 STOCK\ AMZ*.txt
 StockDcasa*.csv
 StockDcasa*.xlsx

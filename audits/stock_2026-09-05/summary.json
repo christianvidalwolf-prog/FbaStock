@@ -1,0 +1,134 @@
+{
+  "replay_exact_match": true,
+  "total_skus": 23139,
+  "positive_skus": 6819,
+  "providers": {
+    "DC": {
+      "referencias_origen": 6964,
+      "referencias_origen_con_stock": 6964,
+      "sku_exportados": 9396,
+      "sku_con_stock": 4204,
+      "motivos": {
+        "referencia_ausente_del_fichero": 5060,
+        "exportado_con_stock": 4204,
+        "umbral_20_unidades_o_20_euros": 132
+      },
+      "referencias_con_stock_sin_sku_exportado": 2640
+    },
+    "SG": {
+      "referencias_origen": 5371,
+      "referencias_origen_con_stock": 5288,
+      "sku_exportados": 5139,
+      "sku_con_stock": 1418,
+      "motivos": {
+        "referencia_ausente_del_fichero": 3294,
+        "umbral_20_unidades_o_20_euros": 306,
+        "exportado_con_stock": 1418,
+        "stock_origen_cero": 28,
+        "umbral_stock_4": 93
+      },
+      "referencias_con_stock_sin_sku_exportado": 3497
+    },
+    "VC": {
+      "referencias_origen": 5676,
+      "referencias_origen_con_stock": 960,
+      "sku_exportados": 7912,
+      "sku_con_stock": 921,
+      "motivos": {
+        "exportado_con_stock": 921,
+        "stock_origen_cero": 4361,
+        "referencia_ausente_del_fichero": 2528,
+        "exclusion_explicita": 102
+      },
+      "referencias_con_stock_sin_sku_exportado": 88
+    },
+    "MD": {
+      "referencias_origen": 913,
+      "referencias_origen_con_stock": 913,
+      "sku_exportados": 639,
+      "sku_con_stock": 276,
+      "motivos": {
+        "referencia_ausente_del_fichero": 363,
+        "exportado_con_stock": 276
+      },
+      "referencias_con_stock_sin_sku_exportado": 637
+    }
+  },
+  "history": [
+    {
+      "file": "STOCK AMZ 20260901.txt",
+      "total": 7855,
+      "providers": {
+        "VC": 1930,
+        "SG": 1428,
+        "DC": 4223,
+        "MD": 274
+      },
+      "sha256": "fb2494033d88c3327f235581f3bd146dd9184ab31071377211fea22507c143db"
+    },
+    {
+      "file": "STOCK AMZ 20260902.txt",
+      "total": 4285,
+      "providers": {
+        "VC": 1927,
+        "SG": 1425,
+        "MD": 274,
+        "DC": 659
+      },
+      "sha256": "6d7f6e941bc6883b25248130f917a7efc2e1288e394f02252ec16f0e2b51c286"
+    },
+    {
+      "file": "STOCK AMZ 20260903.txt",
+      "total": 2352,
+      "providers": {
+        "SG": 1419,
+        "MD": 274,
+        "DC": 659
+      },
+      "sha256": "ded2cb3e2b34b36ffcd74e50b64d6a5461f2904d7514315b33c6cf7508356cdb"
+    },
+    {
+      "file": "STOCK AMZ 20260904.txt",
+      "total": 2351,
+      "providers": {
+        "SG": 1418,
+        "MD": 274,
+        "DC": 659
+      },
+      "sha256": "519e8cc1759b5fb521d6b50ecd664f3c8ad33a4a53f63d82d743e11a6c7abaee"
+    },
+    {
+      "file": "STOCK AMZ 20260905.txt",
+      "total": 6819,
+      "providers": {
+        "VC": 921,
+        "SG": 1418,
+        "DC": 4204,
+        "MD": 276
+      },
+      "sha256": "7a561533d4c48ddf1eae2eca0b37b2e8903b95eae32045c1028f16034723ce2e"
+    }
+  ],
+  "source_files": {
+    "STOCK AMZ.txt": {
+      "bytes": 2451671,
+      "sha256": "7a561533d4c48ddf1eae2eca0b37b2e8903b95eae32045c1028f16034723ce2e"
+    },
+    "DataWeb20260904.csv": {
+      "bytes": 1389880,
+      "sha256": "04dc52a634f1040225b67781021facccc2ca82e379b44013e6732feffdae539d"
+    },
+    "minerales_feed.xml": {
+      "bytes": 75958,
+      "sha256": "93ba80050759c1b33051017a35ebe1bbd3ddb33097e72aae8508a413f23c8ae3"
+    },
+    "signes_stock.csv": {
+      "bytes": 1270574,
+      "sha256": "8d3643d744310ec45a2fd2e81314ccf800801a6ececf74aae86432cd6f423eed"
+    },
+    "STOCK TREDISER.xls": {
+      "bytes": 145408,
+      "sha256": "a38a29c28e740a2b91977a0c11be9684716a70bb184f010a5b715b2e2423cec0"
+    }
+  }
+}

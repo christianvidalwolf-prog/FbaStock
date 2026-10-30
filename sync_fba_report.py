@@ -477,6 +477,16 @@ def download_supplier_data():
                     )
             else:
                 # Daily update refreshes these local files first; use them as source of truth.
+                if p_name == "minerales":
+                    try:
+                        from update_minerales_feed import find_latest_manual_file, convert_manual_csv_to_feed
+                        manual_file = find_latest_manual_file()
+                        if manual_file and os.path.exists(manual_file):
+                            if not os.path.exists(local_fallback) or os.path.getmtime(manual_file) > os.path.getmtime(local_fallback):
+                                convert_manual_csv_to_feed(manual_file, local_fallback)
+                    except Exception as exc:
+                        print(f"  Notice: manual Minerales check skipped: {exc}")
+
                 if local_fallback and os.path.exists(local_fallback):
                     print(f"  Using local {p_name} file: {local_fallback}")
                     if config.get("type") == "pipe":
@@ -601,6 +611,7 @@ def get_provider_and_id(sku):
         (r"^(\d+)SGRG", "SG"),
         (r"^(\d+)SGR", "SG"),
         (r"^(\d+)SGFBA", "SG"),
+        (r"^(\d+)\s*SGI?", "SG"),
         (r"^(\d+)SG", "SG"),
         (r"^(\d+)VCFBA", "VC"),
         (r"^(\d+)VCT", "VC"),
@@ -1028,9 +1039,16 @@ def sync():
                     # No velocity data — assume stock is covered, use sentinel
                     days_left = 999
 
-            # REGLA: Si el ASIN ya tiene stock en cualquier SKU, no recomendar reorder
-            # a menos que el tránsito sea insuficiente
-            if asin in asins_with_stock:
+            # REGLA: SKUs forzados a 0 (ej. 5324VC, 2598VCI, 4085VC)
+            FORCED_ZERO_SKUS = {"5324VC", "2598VCI", "2598VC", "4085VC", "4085VCI"}
+            if (
+                normalize_sku(sku) in FORCED_ZERO_SKUS
+                or sku.startswith(("5324VC", "2598VC", "2598VCI", "4085VC", "4085VCI"))
+                or (prov_key and f"{clean_id}{prov_key}" in FORCED_ZERO_SKUS)
+            ):
+                supp_stock = 0
+                final_rec = 0
+            elif asin in asins_with_stock:
                 # El ASIN ya tiene stock, pero verificamos si necesitamos más según tránsito
                 needed = max(0, amazon_rec - transit)
                 final_rec = min(needed, supp_stock) if needed > 0 else 0
@@ -1107,6 +1125,13 @@ def sync():
 
             prov_key, clean_id = get_provider_and_id(base_sku)
             if not prov_key:
+                continue
+
+            if (
+                normalize_sku(base_sku) in FORCED_ZERO_SKUS
+                or base_sku.startswith(("5324VC", "2598VC", "2598VCI", "4085VC", "4085VCI"))
+                or f"{clean_id}{prov_key}" in FORCED_ZERO_SKUS
+            ):
                 continue
 
             fbm_recommendations.append(

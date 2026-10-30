@@ -101,6 +101,9 @@ function App() {
   // Excluded SKUs (No restock)
   const [excludedSkus, setExcludedSkus] = useState<Set<string>>(() => loadSetFromLocalStorage('excluded_skus'));
 
+  // Seasonal SKUs (visual reminder, e.g. Christmas products)
+  const [seasonalSkus, setSeasonalSkus] = useState<Set<string>>(() => loadSetFromLocalStorage('seasonal_skus'));
+
   // Exclusion notes
   const [excludedNotes, setExcludedNotes] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem('excluded_notes');
@@ -126,15 +129,20 @@ function App() {
           setExcludedSkus(s);
           localStorage.setItem('excluded_skus', JSON.stringify(prefs.excluded));
         }
+        if (prefs.seasonal) {
+          const s = new Set<string>(prefs.seasonal);
+          setSeasonalSkus(s);
+          localStorage.setItem('seasonal_skus', JSON.stringify(prefs.seasonal));
+        }
       })
       .catch(() => { /* use localStorage fallback */ });
   }, []);
 
-  const syncPrefs = (notes: Record<string, string>, excluded: string[]) => {
+  const syncPrefs = (notes: Record<string, string>, excluded: string[], seasonal = Array.from(seasonalSkus)) => {
     fetch('/api/prefs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes, excluded }),
+      body: JSON.stringify({ notes, excluded, seasonal }),
     }).catch(() => { /* silent fail, localStorage already updated */ });
   };
 
@@ -157,6 +165,18 @@ function App() {
       const arr = Array.from(next);
       localStorage.setItem('excluded_skus', JSON.stringify(arr));
       syncPrefs(excludedNotes, arr);
+      return next;
+    });
+  };
+
+  const toggleSeasonal = (sku: string) => {
+    setSeasonalSkus(prev => {
+      const next = new Set(prev);
+      if (next.has(sku)) next.delete(sku);
+      else next.add(sku);
+      const arr = Array.from(next);
+      localStorage.setItem('seasonal_skus', JSON.stringify(arr));
+      syncPrefs(excludedNotes, Array.from(excludedSkus), arr);
       return next;
     });
   };
@@ -230,8 +250,8 @@ function App() {
       'VENTAS 30D': p.sales_30 || 0,
       'VENTAS 60D': p.sales_60 || 0,
       'VENTAS 365D': p.sales_365 || 0,
-      'STOCK FBA+ENV': getEffectiveStock(p),
-      'STOCK FBA': getEffectiveStock(p),
+      'STOCK FBA (SellerBoard)': p.stock_amz,
+      'STOCK EFECTIVO (+ENV)': getEffectiveStock(p),
       'ROI %': p.roi,
       PROVEEDOR: p.provider
     }));
@@ -270,8 +290,8 @@ function App() {
         'VENTAS 30D': p.sales_30 || 0,
         'VENTAS 60D': p.sales_60 || 0,
         'VENTAS 365D': p.sales_365 || 0,
-        'STOCK FBA+ENV': getEffectiveStock(p),
-        'STOCK FBA': getEffectiveStock(p),
+        'STOCK FBA (SellerBoard)': p.stock_amz,
+        'STOCK EFECTIVO (+ENV)': getEffectiveStock(p),
         'TRANSITO': p.sent_to_fba,
         'RESERVADO': p.reserved,
         'VELOCIDAD': p.velocity.toFixed(2),
@@ -279,7 +299,8 @@ function App() {
         'STOCK PROV': p.supp_stock,
         'A PEDIR': excludedSkus.has(p.sku) ? 0 : p.final_rec,
         PROVEEDOR: p.provider,
-        EXCLUIDO: excludedSkus.has(p.sku) ? 'SI' : 'NO'
+        EXCLUIDO: excludedSkus.has(p.sku) ? 'SI' : 'NO',
+        ESTACIONAL: seasonalSkus.has(p.sku) ? 'SI' : 'NO'
       }));
     }
 
@@ -342,7 +363,7 @@ function App() {
             case 'title': cellValue = p.title; break;
             case 'asin': cellValue = p.asin; break;
             case 'sales_365': cellValue = p.sales_365 || 0; break;
-            case 'stock_amz': cellValue = getEffectiveStock(p); break;
+            case 'stock_amz': cellValue = p.stock_amz; break;
             case 'velocity': cellValue = p.velocity; break;
             case 'days_left': cellValue = p.days_left; break;
             case 'supp_stock': cellValue = p.supp_stock; break;
@@ -370,7 +391,7 @@ function App() {
           case 'title': aVal = a.title; bVal = b.title; break;
           case 'asin': aVal = a.asin; bVal = b.asin; break;
           case 'sales_365': aVal = a.sales_365 || 0; bVal = b.sales_365 || 0; break;
-          case 'stock_amz': aVal = getEffectiveStock(a); bVal = getEffectiveStock(b); break;
+          case 'stock_amz': aVal = a.stock_amz; bVal = b.stock_amz; break;
           case 'velocity': aVal = a.velocity; bVal = b.velocity; break;
           case 'days_left': aVal = a.days_left; bVal = b.days_left; break;
           case 'supp_stock': aVal = a.supp_stock; bVal = b.supp_stock; break;
@@ -430,7 +451,7 @@ function App() {
             case 'title': cellValue = p.title; break;
             case 'asin': cellValue = p.asin; break;
             case 'sales_365': cellValue = p.sales_365 || 0; break;
-            case 'stock_amz': cellValue = getEffectiveStock(p); break;
+            case 'stock_amz': cellValue = p.stock_amz; break;
             case 'roi': cellValue = p.roi; break;
             default: cellValue = '';
           }
@@ -454,7 +475,7 @@ function App() {
           case 'title': aVal = a.title; bVal = b.title; break;
           case 'asin': aVal = a.asin; bVal = b.asin; break;
           case 'sales_365': aVal = a.sales_365 || 0; bVal = b.sales_365 || 0; break;
-          case 'stock_amz': aVal = getEffectiveStock(a); bVal = getEffectiveStock(b); break;
+          case 'stock_amz': aVal = a.stock_amz; bVal = b.stock_amz; break;
           case 'roi': aVal = a.roi; bVal = b.roi; break;
           default: return 0;
         }
@@ -697,6 +718,7 @@ function App() {
                 <div className="flex items-center gap-2">
                   <Legend color="bg-error" label="Crítico <7d" />
                   <Legend color="bg-orange-400" label="Alerta <15d" />
+                  <Legend color="bg-yellow-400" label="Estacional" />
                   <Legend color="bg-emerald-500" label="OK" />
                   <span className="text-xs text-on-surface-variant font-medium bg-surface-container px-3 py-1 rounded-full ml-2">
                     {filteredProducts.length} SKUs
@@ -711,7 +733,7 @@ function App() {
                       <tr className="bg-surface-container-low border-b border-outline-variant">
                         <TableHeaderSortable column="sku" label="PRODUCTO" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
                         <TableHeaderSortable column="sales_60" label="VENTAS" sublabel="7d/30d/60d/365d" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
-                        <TableHeaderSortable column="stock_amz" label="STOCK" sublabel="FBA+Env" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
+                        <TableHeaderSortable column="stock_amz" label="STOCK FBA" sublabel="SellerBoard" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
                         <TableHeaderSortable column="velocity" label="COBER" sublabel="Días/Vel" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
                         <TableHeaderSortable column="supp_stock" label="PROV" sublabel="Stock" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
                         <TableHeaderSortable column="final_rec" label="PEDIR" sublabel="Uds" align="center" sortConfig={sortConfig} onSort={handleSort} columnFilters={columnFilters} onFilter={handleColumnFilter} />
@@ -726,7 +748,9 @@ function App() {
                             product={p} 
                             index={idx} 
                             isExcluded={excludedSkus.has(p.sku)}
+                            isSeasonal={seasonalSkus.has(p.sku)}
                             onToggleExclude={() => toggleExclude(p.sku)}
+                            onToggleSeasonal={() => toggleSeasonal(p.sku)}
                             note={excludedNotes[p.sku] || ''}
                             onUpdateNote={(note) => updateExcludedNote(p.sku, note)}
                           />
@@ -881,7 +905,7 @@ function App() {
                         </td>
                         <td className="px-gutter py-4 text-center font-bold">
                           <StockCell
-                            stock={getEffectiveStock(p)}
+                            stock={p.stock_amz}
                             sentToFba={p.sent_to_fba}
                             reserved={p.reserved}
                           />
@@ -1024,7 +1048,6 @@ function StockCell({
   sentToFba,
   reserved,
   compact = false,
-  showBreakdown = false,
 }: {
   stock: number;
   sentToFba: number;
@@ -1033,46 +1056,17 @@ function StockCell({
   showBreakdown?: boolean;
 }) {
   const transit = sentToFba;
-  if (showBreakdown) {
-    const fbaPhysical = Math.max(0, stock - transit - reserved);
-    return (
-      <div className="flex flex-col items-center">
-        <span
-          className={
-            compact
-              ? 'text-[12px] font-bold tabular-nums text-on-surface leading-none'
-              : 'text-sm font-bold tabular-nums text-on-surface'
-          }
-        >
-          {stock}
-        </span>
-        {(transit > 0 || reserved > 0) && (
-          <div className="mt-1 flex flex-col items-center gap-0.5 text-[8px] font-semibold text-slate-500/80 leading-none">
-            <span>{fbaPhysical} FBA</span>
-            {transit > 0 && (
-              <span className="text-indigo-600 bg-indigo-50/50 px-0.5 py-0.2 rounded border border-indigo-100/30">
-                +{transit} Env
-              </span>
-            )}
-            {reserved > 0 && (
-              <span className="text-orange-600 bg-orange-50/50 px-0.5 py-0.2 rounded border border-orange-100/30">
-                R{reserved}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
+  const effectiveTotal = stock + transit + reserved;
 
   return (
     <div className="flex flex-col items-center">
       <span
         className={
           compact
-            ? 'text-[12px] font-bold tabular-nums text-on-surface leading-none'
-            : 'text-sm font-bold tabular-nums text-on-surface'
+            ? 'text-[12px] font-extrabold tabular-nums text-on-surface leading-none'
+            : 'text-sm font-extrabold tabular-nums text-on-surface'
         }
+        title={`Stock FBA disponible: ${stock} | Tránsito: ${transit} | Reservado: ${reserved} | Total Efectivo: ${effectiveTotal}`}
       >
         {stock}
       </span>
@@ -1082,20 +1076,22 @@ function StockCell({
             <span
               className={
                 compact
-                  ? 'text-[8px] font-bold text-indigo-600 bg-indigo-50 px-0.5 rounded border border-indigo-100/50'
+                  ? 'text-[8px] font-bold text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded border border-indigo-100/50'
                   : 'text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-100/50'
               }
+              title={`En tránsito a FBA: +${transit}`}
             >
-              +{transit}
+              +{transit} Env
             </span>
           )}
           {reserved > 0 && (
             <span
               className={
                 compact
-                  ? 'text-[8px] font-bold text-orange-600 bg-orange-50 px-0.5 rounded border border-orange-100/50'
+                  ? 'text-[8px] font-bold text-orange-600 bg-orange-50 px-1 py-0.2 rounded border border-orange-100/50'
                   : 'text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full border border-orange-100/50'
               }
+              title={`Reservado por Amazon: R${reserved}`}
             >
               R{reserved}
             </span>
@@ -1137,14 +1133,18 @@ function TableRow({
   product, 
   index, 
   isExcluded, 
+  isSeasonal,
   onToggleExclude,
+  onToggleSeasonal,
   note,
   onUpdateNote,
 }: { 
   product: Product; 
   index: number;
   isExcluded: boolean;
+  isSeasonal: boolean;
   onToggleExclude: () => void;
+  onToggleSeasonal: () => void;
   note: string;
   onUpdateNote: (note: string) => void;
 }) {
@@ -1182,6 +1182,8 @@ function TableRow({
       className={`transition-colors border-b border-outline-variant/30 ${
         isExcluded 
           ? 'bg-slate-50/50 grayscale-[0.5] opacity-60' 
+          : isSeasonal
+          ? 'bg-yellow-50/80 hover:bg-yellow-100/80'
           : isCritical
           ? 'bg-red-50/40 hover:bg-red-50/70'
           : isWarning
@@ -1206,16 +1208,35 @@ function TableRow({
             </span>
           </button>
 
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSeasonal(); }}
+            className={`flex-shrink-0 transition-all p-1 rounded-lg mt-0.5 ${
+              isSeasonal
+                ? 'text-yellow-800 bg-yellow-200/80 border border-yellow-300'
+                : 'text-slate-200 hover:text-yellow-700 hover:bg-yellow-50'
+            }`}
+            title={isSeasonal ? "Quitar marca estacional" : "Marcar como estacional"}
+          >
+            <span className="material-symbols-outlined text-[15px]">
+              {isSeasonal ? 'event_available' : 'event'}
+            </span>
+          </button>
+
           <span
             className={`w-0.5 h-5 rounded-full flex-shrink-0 mt-1.5 ${
-              isExcluded ? 'bg-slate-300' : isCritical ? 'bg-error' : isWarning ? 'bg-orange-400' : 'bg-emerald-400'
+              isExcluded ? 'bg-slate-300' : isSeasonal ? 'bg-yellow-400' : isCritical ? 'bg-error' : isWarning ? 'bg-orange-400' : 'bg-emerald-400'
             }`}
           />
           <div className="min-w-0">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <p className={`font-bold text-[12px] ${isExcluded ? 'text-slate-400 line-through' : 'text-on-surface'}`}>
                 {product.sku}
               </p>
+              {isSeasonal && (
+                <span className="rounded-full bg-yellow-200/80 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-yellow-800">
+                  Estacional
+                </span>
+              )}
             </div>
             <span className="text-[10px] text-on-surface-variant block leading-tight opacity-70 whitespace-normal">{product.title}</span>
             {isExcluded && (
@@ -1268,11 +1289,10 @@ function TableRow({
       {/* Stock AMZ Compacto */}
       <td className="px-1 py-2 text-center">
         <StockCell
-          stock={getEffectiveStock(product)}
+          stock={product.stock_amz}
           sentToFba={product.sent_to_fba}
           reserved={product.reserved}
           compact
-          showBreakdown
         />
       </td>
 

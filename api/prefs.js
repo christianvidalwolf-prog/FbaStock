@@ -28,16 +28,17 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    const prefs = (await redisGet(KEY)) || { notes: {}, excluded: [] };
+    const prefs = (await redisGet(KEY)) || { notes: {}, excluded: [], seasonal: [] };
     return res.status(200).json(prefs);
   }
 
   if (req.method === 'POST') {
-    const { notes, excluded } = req.body;
-    const current = (await redisGet(KEY)) || { notes: {}, excluded: [] };
+    const { notes, excluded, seasonal } = req.body;
+    const current = (await redisGet(KEY)) || { notes: {}, excluded: [], seasonal: [] };
     const updated = {
       notes: notes !== undefined ? notes : current.notes,
       excluded: excluded !== undefined ? excluded : current.excluded,
+      seasonal: seasonal !== undefined ? seasonal : (current.seasonal || []),
     };
     await redisSet(KEY, updated);
     return res.status(200).json({ ok: true });

@@ -260,8 +260,8 @@ def main():
         if sku == "nan" or not sku:
             continue
             
-        # Always set stock to 0 for SKUs 3370VC, 5324VC, 2598VCI, 2598VC, 4085VC, 4085VCI
-        if sku.upper().strip() in {"3370VC", "5324VC", "2598VCI", "2598VC", "4085VC", "4085VCI"}:
+        # Always set stock to 0 for SKUs 3370VC, 5324VC, 2598VCI, 2598VC, 4085VC, 4085VCI, 28413SG, 30993SG
+        if sku.upper().strip() in {"3370VC", "5324VC", "2598VCI", "2598VC", "4085VC", "4085VCI", "28413SG", "30993SG"}:
             df_web.at[idx, 1] = 0.0
             updated_count += 1
             continue
@@ -278,7 +278,9 @@ def main():
             
             final_stock = 0
             if prov == "VC":
-                if raw_stock >= 5:
+                if clean_id == "2162" and raw_stock == 91:
+                    final_stock = 0
+                elif raw_stock >= 5:
                     final_stock = raw_stock
             elif prov == "SG":
                 if raw_stock > 3:

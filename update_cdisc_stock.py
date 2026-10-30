@@ -79,6 +79,15 @@ def load_suppliers_data():
     stocks = {"VC": {}, "SG": {}, "DC": {}, "MD": {}}
     
     # 1. Minerales (VC)
+    try:
+        from update_minerales_feed import find_latest_manual_file, convert_manual_csv_to_feed
+        manual_file = find_latest_manual_file()
+        if manual_file and os.path.exists(manual_file):
+            if not os.path.exists(MINERALES_FEED) or os.path.getmtime(manual_file) > os.path.getmtime(MINERALES_FEED):
+                convert_manual_csv_to_feed(manual_file, MINERALES_FEED)
+    except Exception:
+        pass
+
     if os.path.exists(MINERALES_FEED):
         try:
             with open(MINERALES_FEED, "r", encoding="utf-8", errors="ignore") as f:
@@ -146,6 +155,7 @@ def get_provider_and_id(sku):
         (r"^(\d+)SGRG", "SG"),
         (r"^(\d+)SGR", "SG"),
         (r"^(\d+)SGFBA", "SG"),
+        (r"^(\d+)\s*SGI?", "SG"),
         (r"^(\d+)SG", "SG"),
         (r"^(\d+)VCFBA", "VC"),
         (r"^(\d+)VCT", "VC"),
@@ -202,6 +212,12 @@ def main():
         if sku == "nan" or not sku:
             continue
             
+        # Always set stock to 0 for SKUs 3370VC, 5324VC, 2598VCI, 2598VC, 4085VC, 4085VCI, 28413SG, 30993SG
+        if sku.upper().strip() in {"3370VC", "5324VC", "2598VCI", "2598VC", "4085VC", "4085VCI", "28413SG", "30993SG"}:
+            df.at[idx, 2] = 0
+            updated_count += 1
+            continue
+
         prov, clean_id = get_provider_and_id(sku)
         
         if prov and clean_id:
@@ -214,7 +230,9 @@ def main():
             
             final_stock = 0
             if prov == "VC":
-                if raw_stock >= 5: final_stock = raw_stock
+                if clean_id == "2162" and raw_stock == 91:
+                    final_stock = 0
+                elif raw_stock >= 5: final_stock = raw_stock
             elif prov == "SG":
                 if raw_stock > 3: final_stock = raw_stock
             elif prov == "DC":
@@ -235,6 +253,16 @@ def main():
         print(f"Successfully saved updated stock to {CDISC_FILE} and {CDISC_HISTORY_FILE}")
     except Exception as e:
         print(f"Error saving Excel: {e}")
+
+    cleanup_old_history_files()
+
+def cleanup_old_history_files(days=10):
+    cutoff = (datetime.now() - pd.Timedelta(days=days)).strftime('%Y%m%d')
+    for f in glob.glob(os.path.join(WORK_DIR, "cdisc precio *.xlsx")):
+        m = re.search(r'(\d{8})', os.path.basename(f))
+        if m and m.group(1) < cutoff:
+            os.remove(f)
+            print(f"Removed old history file: {f}")
 
 if __name__ == "__main__":
     main()
