@@ -267,7 +267,7 @@ SKUS_ELIMINADOS = {
 }
 
 PRECIOS_FIJOS = {
-    "308967DCI": 27.90,  # precio fijo ES (11 nov 2026)
+    "308967DCI": 27.00,  # precio fijo ES (12 nov 2026)
     "9046VC": 11.95,
     "41183SGI": 89.0,
     "27349RGSG": 139.0,
