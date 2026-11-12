@@ -267,6 +267,7 @@ SKUS_ELIMINADOS = {
 }
 
 PRECIOS_FIJOS = {
+    "308967DCI": 27.90,  # precio fijo ES (11 nov 2026)
     "9046VC": 11.95,
     "41183SGI": 89.0,
     "27349RGSG": 139.0,
@@ -299,6 +300,25 @@ PRECIOS_FIJOS = {
     "42812MD": 13.95,
     "2684319CLM": 19.99,
     "15738VCI": 16.50,
+    # Precios ES fijados 10 nov 2026
+    "12606VC": 6.0,
+    "37230SGRI": 9.0,
+    "14791VCI": 9.0,
+    "14802VCI": 9.0,
+    "17999VCI": 20.0,
+    "284531CLM": 14.0,
+    "2597372CLM": 9.0,
+    "4916VCT": 11.99,
+    "9060VC0": 7.95,
+    "305403CLM": 10.99,
+    "17384VCI": 9.99,
+    "10199VC": 10.99,
+    "14300VCI": 9.99,
+    "5329VC": 8.99,
+    "33101SGRI": 9.99,
+    "2166VCI": 11.99,
+    "4365VCI": 11.99,
+    "14371VCI": 6.99,
 }
 
 # SKUs excluidos de la automatización (se actualizan manualmente)
@@ -1426,7 +1446,9 @@ def load_dcasa_dci_prices(path):
         for row in reader:
             sku = row["sku"].strip()
             price = float(row["price"])
-            if not sku.endswith("DCI") or not sku[:-3].isdigit():
+            is_standard_dci = sku.endswith("DCI") and sku[:-3].isdigit()
+            is_approved_adci = sku == "2827220-ADCI"
+            if not (is_standard_dci or is_approved_adci):
                 raise ValueError(f"Invalid Dcasa DCI SKU: {sku}")
             if not 0 < price < float("inf") or sku in prices:
                 raise ValueError(f"Invalid price or duplicate DCI SKU: {sku}")
@@ -1481,7 +1503,11 @@ def run_fast_update():
     dci_prices = load_dcasa_dci_prices(DCASA_DCI_FILE)
     catalog = [entry for entry in catalog if entry["sku"] not in dci_prices]
     catalog.extend(
-        {"sku": sku, "provider": "DC", "id": sku[:-3]}
+        {
+            "sku": sku,
+            "provider": "DC",
+            "id": "2827220" if sku == "2827220-ADCI" else sku[:-3],
+        }
         for sku in dci_prices
     )
     print(f"Loaded {len(dci_prices)} approved Dcasa DCI listings.")
@@ -1770,7 +1796,7 @@ def run_fast_update():
         if sku in SKUS_MANUALES:
             continue
 
-        final_price = item["price"]
+        final_price = PRECIOS_FIJOS.get(sku, item["price"])
         prod_num = item["prod_num"]
         final_stock = 0
 
