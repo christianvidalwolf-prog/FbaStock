@@ -20,6 +20,7 @@ PRECIOS_FILE = f"{WORK_DIR}/precios ES.xlsx"
 STOCK_TREDISER_FILE = f"{WORK_DIR}/STOCK TREDISER.xls"
 SIGNES_SGI_FILE = f"{WORK_DIR}/signes_sgi_amazon.csv"
 DCASA_DCI_FILE = f"{WORK_DIR}/dcasa_dci_amazon.csv"
+TREDISER_MD_FILE = f"{WORK_DIR}/trediser_md_amazon.csv"
 
 AMAZON_NEW_TEMPLATE_HEADERS = [
     ['settings=feedType=256&timestamp=2026-09-04T11%3A57%3A59.677Z&contributorId=amzn1.cr.o.A3RY0L9OY3TPHI&primaryMarketplaceId=amzn1.mp.o.A1RKKUPIHCS9HS&contentLanguageTag=es_ES&templateIdentifier=e4bbc050-a76e-4b77-acd9-e91ac5e8be26&headerLanguageTag=es_ES&labelRow=4&attributeRow=5&dataRow=7&flavor=seller-price-quantity&isProcessingSummary=false&isEdit=false&productTypeRequirement=LISTING_OFFER_ONLY&listingsItemRequirement=LISTING_OFFER_ONLY&reportProvenance=false&settingsHasAllDelocalizationData=true&upgradedFrom=priceandqty&ptds=UFJPRFVDVA%3D%3D&ptdToNamespaceMap=eyJQUk9EVUNUIjoiaW5nZXN0aW9uIn0%3D&browseClassifications=W3sicHJvZHVjdFR5cGUiOiJQUk9EVUNUIiwiYnJvd3NlQ2xhc3NpZmljYXRpb25LZXlzIjpbXX1d&vendorCodes=W10%3D&AttributeDefaultValues=eyJwcm9kdWN0X3R5cGUjMS52YWx1ZSI6IlBST0RVQ1QiLCJyZWNvcmRfYWN0aW9uIzEudmFsdWUiOiJwYXJ0aWFsX3VwZGF0ZSJ9&attributeSettings=W3siYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbbWFya2V0cGxhY2VfaWQ9QTFSS0tVUElIQ1M5SFNdW2F1ZGllbmNlPUFMTF0jMS5vdXJfcHJpY2UjMS5zY2hlZHVsZSMxLnZhbHVlX3dpdGhfdGF4IiwiYWxpYXNlcyI6eyJFbGltaW5hciBvZmVydGEgKFZlbmRlciBlbiBBbWF6b24pIjoiYW16bjEudm9sdC5jdi5kZWxldGVfdW1wX3ZhcmlhbnQifX0seyJhdHRyaWJ1dGUiOiJwdXJjaGFzYWJsZV9vZmZlclttYXJrZXRwbGFjZV9pZD1BMVJLS1VQSUhDUzlIU11bYXVkaWVuY2U9QUxMXSMxLm1heGltdW1fc2VsbGVyX2FsbG93ZWRfcHJpY2UjMS5zY2hlZHVsZSMxLnZhbHVlX3dpdGhfdGF4IiwiYWxpYXNlcyI6eyJFbGltaW5hciBQcmVjaW8gbcOheGltbyBwZXJtaXRpZG8gYWwgdmVuZGVkb3IgKFZlbmRlciBlbiBBbWF6b24sIEVTKSI6ImFtem4xLnZvbHQuY3YuZGVsZXRlX3VtcF90b3BfbGV2ZWxfZmllbGQifX0seyJhdHRyaWJ1dGUiOiJtZXJjaGFudF9zaGlwcGluZ19ncm91cCMxLnZhbHVlIiwiYWxpYXNlcyI6eyJFTlZJTyA0IjoibGVnYWN5LXRlbXBsYXRlLWlkIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSBtw7pzaWNhIjoibGVnYWN5LW11c2ljLXRlbXBsYXRlLWlkIiwiR1JVUE8gMCI6ImY4MzczNDFlLTk3MjUtNDUyNC05YjhlLTk1YmM2OWFkMjUzZCIsIlByaW1lIFZlbmRlZG9yIjoiYWRmYTdhZmEtY2QyMS00NTNhLWJmNjUtMDFiYWY0MjBlYmJkIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSB2aWRlbyI6ImxlZ2FjeS12aWRlby10ZW1wbGF0ZS1pZCIsIkVudmlvcyAzIGRpYXMiOiIxZWZhODE5Zi1kOTEyLTRkZDAtODYwNy04NzUwY2IwZjZlNGEiLCJQbGFudGlsbGEgbWlncmFkYSBwYXJhIGxpYnJvcyI6ImxlZ2FjeS1ib29rLXRlbXBsYXRlLWlkIiwiUHJpbWUgTmFjaW9uYWwiOiI3MDM0MjFiYy03ODQzLTRjZTgtYjJiMC1kYmYxYWMxYzY5YjYiLCJQZW5pbnN1bGEzIjoiYWM4ZGY4ZDgtNzlkZC00ZGVkLThjMTYtNTMyZWRkZDEyOTYyIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSBEVkQiOiJsZWdhY3ktZHZkLXRlbXBsYXRlLWlkIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbbWFya2V0cGxhY2VfaWQ9QTFSS0tVUElIQ1M5SFNdW2F1ZGllbmNlPUFMTF0jMS5jdXJyZW5jeSIsImFsaWFzZXMiOnsiRVVSIjoiRVVSIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbbWFya2V0cGxhY2VfaWQ9QTFSS0tVUElIQ1M5SFNdW2F1ZGllbmNlPUFMTF0jMS5taW5pbXVtX3NlbGxlcl9hbGxvd2VkX3ByaWNlIzEuc2NoZWR1bGUjMS52YWx1ZV93aXRoX3RheCIsImFsaWFzZXMiOnsiRWxpbWluYXIgUHJlY2lvIG3DrW5pbW8gcGVybWl0aWRvIGFsIHZlbmRlZG9yIChWZW5kZXIgZW4gQW1hem9uLCBFUykiOiJhbXpuMS52b2x0LmN2LmRlbGV0ZV91bXBfdG9wX2xldmVsX2ZpZWxkIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbYXVkaWVuY2U9QjJCXSMxLnF1YW50aXR5X2Rpc2NvdW50X3BsYW4jMS5zY2hlZHVsZSMxLmRpc2NvdW50X3R5cGUiLCJhbGlhc2VzIjp7ImZpeGVkIjoiZml4ZWQiLCJwZXJjZW50IjoicGVyY2VudCJ9fSx7ImF0dHJpYnV0ZSI6InB1cmNoYXNhYmxlX29mZmVyW21hcmtldHBsYWNlX2lkPUExUktLVVBJSENTOUhTXVthdWRpZW5jZT1CMkJdIzEuY3VycmVuY3kiLCJhbGlhc2VzIjp7IkVVUiI6IkVVUiJ9fSx7ImF0dHJpYnV0ZSI6InB1cmNoYXNhYmxlX29mZmVyW21hcmtldHBsYWNlX2lkPUExUktLVVBJSENTOUhTXVthdWRpZW5jZT1CMkJdIzEucXVhbnRpdHlfZGlzY291bnRfcGxhbiMxLnNjaGVkdWxlIzEuZGlzY291bnRfdHlwZSIsImFsaWFzZXMiOnsiZml4ZWQiOiJmaXhlZCIsIkVsaW1pbmFyIGRlc2N1ZW50b3MgcG9yIGNhbnRpZGFkIjoiYW16bjEudm9sdC5jdi5kZWxldGVfdW1wX3RvcF9sZXZlbF9maWVsZCIsInBlcmNlbnQiOiJwZXJjZW50In19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbYXVkaWVuY2U9QUxMXSMxLmF1dG9tYXRlZF9wcmljaW5nX21lcmNoYW5kaXNpbmdfcnVsZV9wbGFuIzEubWVyY2hhbmRpc2luZ19ydWxlLnJ1bGVfaWQiLCJhbGlhc2VzIjp7IkdyYWRlIEFuZCBSZXNlbGwgQXV0b21hdGVkIFByaWNpbmcgUnVsZSI6Ijk2MjAxMzY1NDAwMi1HUkFERV9BTkRfUkVTRUxMX0FVVE9NQVRFRCIsIkNvbnRyb2wiOiJkMGYzNGY5OC0xNmMzLTRmZGMtYjU2OS05MTRiMmUzNDg2NTYiLCJCdXNpbmVzcyI6ImEzYjdmOTA4LTlhOTUtNGM3My1iOGZlLWUzOGI3YmZkM2M5OCIsIkNvbXBldGl0aXZlIFByaWNlIFJ1bGUgYnkgQW1hem9uIjoiMTg0MzY2MzcxMDAyLUNPTVBFVElUSVZFX0JVWUJPWCJ9fSx7ImF0dHJpYnV0ZSI6Im1lcmNoYW50X3NoaXBwaW5nX2dyb3VwW21hcmtldHBsYWNlX2lkPUExUktLVVBJSENTOUhTXSMxLnZhbHVlIiwiYWxpYXNlcyI6eyJFTlZJTyA0IjoibGVnYWN5LXRlbXBsYXRlLWlkIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSBtw7pzaWNhIjoibGVnYWN5LW11c2ljLXRlbXBsYXRlLWlkIiwiR1JVUE8gMCI6ImY4MzczNDFlLTk3MjUtNDUyNC05YjhlLTk1YmM2OWFkMjUzZCIsIlByaW1lIFZlbmRlZG9yIjoiYWRmYTdhZmEtY2QyMS00NTNhLWJmNjUtMDFiYWY0MjBlYmJkIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSB2aWRlbyI6ImxlZ2FjeS12aWRlby10ZW1wbGF0ZS1pZCIsIkVudmlvcyAzIGRpYXMiOiIxZWZhODE5Zi1kOTEyLTRkZDAtODYwNy04NzUwY2IwZjZlNGEiLCJQbGFudGlsbGEgbWlncmFkYSBwYXJhIGxpYnJvcyI6ImxlZ2FjeS1ib29rLXRlbXBsYXRlLWlkIiwiUHJpbWUgTmFjaW9uYWwiOiI3MDM0MjFiYy03ODQzLTRjZTgtYjJiMC1kYmYxYWMxYzY5YjYiLCJQZW5pbnN1bGEzIjoiYWM4ZGY4ZDgtNzlkZC00ZGVkLThjMTYtNTMyZWRkZDEyOTYyIiwiUGxhbnRpbGxhIG1pZ3JhZGEgcGFyYSBEVkQiOiJsZWdhY3ktZHZkLXRlbXBsYXRlLWlkIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbbWFya2V0cGxhY2VfaWQ9QTFSS0tVUElIQ1M5SFNdW2F1ZGllbmNlPUIyQl0jMS5taW5pbXVtX3NlbGxlcl9hbGxvd2VkX3ByaWNlIzEuc2NoZWR1bGUjMS52YWx1ZV93aXRoX3RheCIsImFsaWFzZXMiOnsiRWxpbWluYXIgUHJlY2lvIG3DrW5pbW8gcGVybWl0aWRvIGFsIHZlbmRlZG9yIChCMkIsIEVTKSI6ImFtem4xLnZvbHQuY3YuZGVsZXRlX3VtcF90b3BfbGV2ZWxfZmllbGQifX0seyJhdHRyaWJ1dGUiOiJwdXJjaGFzYWJsZV9vZmZlclttYXJrZXRwbGFjZV9pZD1BMVJLS1VQSUhDUzlIU11bYXVkaWVuY2U9QUxMXSMxLmF1dG9tYXRlZF9wcmljaW5nX21lcmNoYW5kaXNpbmdfcnVsZV9wbGFuIzEubWVyY2hhbmRpc2luZ19ydWxlLnJ1bGVfaWQiLCJhbGlhc2VzIjp7IkdyYWRlIEFuZCBSZXNlbGwgQXV0b21hdGVkIFByaWNpbmcgUnVsZSI6Ijk2MjAxMzY1NDAwMi1HUkFERV9BTkRfUkVTRUxMX0FVVE9NQVRFRCIsIkNvbnRyb2wiOiJkMGYzNGY5OC0xNmMzLTRmZGMtYjU2OS05MTRiMmUzNDg2NTYiLCJCdXNpbmVzcyI6ImEzYjdmOTA4LTlhOTUtNGM3My1iOGZlLWUzOGI3YmZkM2M5OCIsIkNvbXBldGl0aXZlIFByaWNlIFJ1bGUgYnkgQW1hem9uIjoiMTg0MzY2MzcxMDAyLUNPTVBFVElUSVZFX0JVWUJPWCJ9fSx7ImF0dHJpYnV0ZSI6InByb2R1Y3RfdHlwZSMxLnZhbHVlIiwiYWxpYXNlcyI6eyJQUk9EVUNUIjoiUFJPRFVDVCJ9fSx7ImF0dHJpYnV0ZSI6ImZ1bGZpbGxtZW50X2F2YWlsYWJpbGl0eSMxLmlzX2ludmVudG9yeV9hdmFpbGFibGUiLCJhbGlhc2VzIjp7IkhhYmlsaXRhZG8iOiJ0cnVlIiwiRGVzaGFiaWxpdGFkbyI6ImZhbHNlIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbbWFya2V0cGxhY2VfaWQ9QTFSS0tVUElIQ1M5SFNdW2F1ZGllbmNlPUIyQl0jMS5tYXhpbXVtX3NlbGxlcl9hbGxvd2VkX3ByaWNlIzEuc2NoZWR1bGUjMS52YWx1ZV93aXRoX3RheCIsImFsaWFzZXMiOnsiRWxpbWluYXIgUHJlY2lvIG3DoXhpbW8gcGVybWl0aWRvIGFsIHZlbmRlZG9yIChCMkIsIEVTKSI6ImFtem4xLnZvbHQuY3YuZGVsZXRlX3VtcF90b3BfbGV2ZWxfZmllbGQifX0seyJhdHRyaWJ1dGUiOiJwdXJjaGFzYWJsZV9vZmZlclthdWRpZW5jZT1CMkJdIzEuY3VycmVuY3kiLCJhbGlhc2VzIjp7IkVVUiI6IkVVUiJ9fSx7ImF0dHJpYnV0ZSI6InB1cmNoYXNhYmxlX29mZmVyW21hcmtldHBsYWNlX2lkPUExUktLVVBJSENTOUhTXVthdWRpZW5jZT1CMkJdIzEub3VyX3ByaWNlIzEuc2NoZWR1bGUjMS52YWx1ZV93aXRoX3RheCIsImFsaWFzZXMiOnsiRWxpbWluYXIgb2ZlcnRhIChCMkIpIjoiYW16bjEudm9sdC5jdi5kZWxldGVfdW1wX3ZhcmlhbnQifX0seyJhdHRyaWJ1dGUiOiJmdWxmaWxsbWVudF9hdmFpbGFiaWxpdHkjMS5mdWxmaWxsbWVudF9jaGFubmVsX2NvZGUiLCJhbGlhc2VzIjp7IkFNQVpPTl9FVV9SQUZOIjoiQU1BWk9OX0VVX1JBRk4iLCJBTUFaT05fRVUyVFJfUkFGTiI6IkFNQVpPTl9FVTJUUl9SQUZOIiwiTG9nw61zdGljYSBwb3IgcGFydGUgZGVsIHZlbmRlZG9yIChwcmVkZXRlcm1pbmFkbykiOiJERUZBVUxUIiwiQU1BWk9OX1VLX1JBRk4iOiJBTUFaT05fVUtfUkFGTiIsIkFNQVpPTl9VSzJOTF9SQUZOIjoiQU1BWk9OX1VLMk5MX1JBRk4iLCJBTUFaT05fRVVfVkNTIjoiQU1BWk9OX0VVX1ZDUyIsIkxvZ8Otc3RpY2EgZGUgQW1hem9uIChVRSkiOiJBTUFaT05fRVUiLCJBTUFaT05fRVUyU0FfUkFGTiI6IkFNQVpPTl9FVTJTQV9SQUZOIn19LHsiYXR0cmlidXRlIjoicHVyY2hhc2FibGVfb2ZmZXJbYXVkaWVuY2U9QUxMXSMxLmN1cnJlbmN5IiwiYWxpYXNlcyI6eyJFVVIiOiJFVVIifX1d&TemplateType=unified&Version=2026.0904&TemplateSignature=UFJPRFVDVA==&umpVersion=MS41NC40NQ==', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
@@ -1476,6 +1477,40 @@ def load_signes_sgi_prices(path):
     return prices
 
 
+TREDISER_MD_SUFFIXES = ("MDCAR", "MD")
+
+
+def split_trediser_md_sku(sku):
+    """Return (suffix, numeric trEDISER code) for an approved MD/MDCAR SKU."""
+    for suffix in TREDISER_MD_SUFFIXES:
+        prefix = sku[: -len(suffix)]
+        if sku.endswith(suffix) and prefix.isdigit():
+            return suffix, prefix
+    return None, None
+
+
+def load_trediser_md_prices(path):
+    """Load the approved trEDISER listings with the price already live on Amazon."""
+    prices = {}
+    if not os.path.exists(path):
+        return prices
+    with open(path, newline="", encoding="utf-8") as source:
+        reader = csv.DictReader(source)
+        if reader.fieldnames != ["sku", "price"]:
+            raise ValueError("MD catalog requires sku,price headers")
+        for row in reader:
+            sku = row["sku"].strip()
+            price = float(row["price"].strip().replace(",", "."))
+            if split_trediser_md_sku(sku)[0] is None:
+                raise ValueError(f"Invalid trEDISER MD SKU: {sku}")
+            if not 0 < price < float("inf") or sku in prices:
+                raise ValueError(f"Invalid price or duplicate MD SKU: {sku}")
+            prices[sku] = price
+    if not prices:
+        raise ValueError("MD catalog is empty")
+    return prices
+
+
 def run_fast_update():
     print(f"--- Fast Stock Update @ {datetime.datetime.now()} ---")
 
@@ -1511,6 +1546,17 @@ def run_fast_update():
         for sku in dci_prices
     )
     print(f"Loaded {len(dci_prices)} approved Dcasa DCI listings.")
+
+    # Approved trEDISER listings created with the MD/MDCAR suffix. Stock comes
+    # from STOCK TREDISER.xls (numeric code); price is the approved Amazon price.
+    md_prices = load_trediser_md_prices(TREDISER_MD_FILE)
+    if md_prices:
+        catalog = [entry for entry in catalog if entry["sku"] not in md_prices]
+        catalog.extend(
+            {"sku": sku, "provider": "MD", "id": split_trediser_md_sku(sku)[1]}
+            for sku in md_prices
+        )
+        print(f"Loaded {len(md_prices)} approved trEDISER MD listings.")
 
     # Load Base Stocks for MD (from STOCK ES)
     BASE_STOCKS_FILE = f"{WORK_DIR}/base_stocks.json"
@@ -1690,6 +1736,9 @@ def run_fast_update():
         ):
             final_price = final_price * 1.05
             final_price = round(int(final_price * 10) / 10.0 + 0.05, 2)
+
+        if sku in md_prices:
+            final_price = md_prices[sku]
 
         # If not found in precios ES, use a default or 0 (User said prices ARE in that file)
         final_stock = 0
